@@ -32,6 +32,9 @@
     favorites: new Set(data.favoriteIds),
     rateLimitRemaining: 20,
     isResponding: false,
+    authStep: 'phone',
+    authPhone: '',
+    currentUser: null,
   };
   const replies = {
     luna: 'Then let’s make tonight a little more impossible. I’ll bring the stars; you bring the question.',
@@ -42,10 +45,6 @@
     nova: 'I’ll put it in the next postcard. By the time you receive it, we may both be somewhere else.',
   };
   const characterById = new Map(data.characters.map((character) => [character.id, character]));
-  const conversationByCharacter = new Map(
-    data.conversations.map((conversation) => [conversation.characterId, conversation]),
-  );
-
   const select = (selector, parent = document) => parent.querySelector(selector);
   const selectAll = (selector, parent = document) => Array.from(parent.querySelectorAll(selector));
   const getCharacter = (id) => characterById.get(id) || data.characters[0];
@@ -361,8 +360,45 @@
     window.setTimeout(() => toast.remove(), 2800);
   }
 
+  function setAuthError(message = '') {
+    const error = select('#auth-error');
+    error.textContent = message;
+    error.hidden = !message;
+  }
+
+  function updateAuthStep() {
+    const isOtpStep = state.authStep === 'otp';
+    const phoneInput = select('#phone-input');
+    const otpField = select('#otp-field');
+    const otpInput = select('#otp-input');
+    const submitButton = select('#auth-form button[type="submit"]');
+    const title = select('#auth-dialog .dialog-heading h2');
+    const description = select('#auth-dialog .dialog-heading p:last-child');
+    phoneInput.disabled = isOtpStep;
+    otpField.hidden = !isOtpStep;
+    otpInput.required = isOtpStep;
+    submitButton.dataset.i18n = isOtpStep ? 'verifyOtp' : 'sendOtp';
+    submitButton.textContent = getTranslation(submitButton.dataset.i18n);
+    title.dataset.i18n = isOtpStep ? 'verifyOtpTitle' : 'signInTitle';
+    title.textContent = getTranslation(title.dataset.i18n);
+    description.dataset.i18n = isOtpStep ? 'verifyOtpDescription' : 'signInDescription';
+    description.textContent = getTranslation(description.dataset.i18n);
+    if (isOtpStep) {
+      window.setTimeout(() => otpInput.focus(), 50);
+    }
+  }
+
+  function resetAuthForm() {
+    state.authStep = 'phone';
+    state.authPhone = '';
+    select('#auth-form').reset();
+    setAuthError();
+    updateAuthStep();
+  }
+
   function openAuthDialog() {
     const dialog = select('#auth-dialog');
+    resetAuthForm();
     if (typeof dialog.showModal === 'function') {
       dialog.showModal();
     } else {
@@ -377,6 +413,60 @@
       dialog.close();
     } else {
       dialog.removeAttribute('open');
+    }
+  }
+
+  function updateUserProfile(user) {
+    if (!user) {
+      return;
+    }
+    state.currentUser = user;
+    const displayName = user.display_name || 'RoleVerse member';
+    select('.profile-copy strong').textContent = displayName;
+    const initials = displayName
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+    selectAll('.avatar-top, .profile-button .avatar').forEach((avatar) => {
+      avatar.textContent = initials || 'RV';
+    });
+  }
+
+  async function submitAuth(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) {
+      return;
+    }
+    const submitButton = select('#auth-form button[type="submit"]');
+    submitButton.disabled = true;
+    setAuthError();
+    try {
+      if (state.authStep === 'phone') {
+        const phone = select('#phone-input').value.trim();
+        const result = await api.requestOtp(phone);
+        if (!result.ok) {
+          setAuthError(result.status === 429 ? result.data?.detail || getTranslation('authError') : getTranslation('authUnavailable'));
+          return;
+        }
+        state.authPhone = phone;
+        state.authStep = 'otp';
+        updateAuthStep();
+        return;
+      }
+      const code = select('#otp-input').value.trim();
+      const result = await api.verifyOtp(state.authPhone, code);
+      if (!result.ok) {
+        setAuthError(result.status === 429 ? result.data?.detail || getTranslation('authError') : getTranslation('authError'));
+        return;
+      }
+      updateUserProfile(result.data?.user);
+      closeAuthDialog();
+      showToast(getTranslation('loginSuccess'));
+    } finally {
+      submitButton.disabled = false;
     }
   }
 
@@ -475,14 +565,7 @@
       sendMessage();
     });
     select('#character-search').addEventListener('input', renderGrids);
-    select('#auth-form').addEventListener('submit', (event) => {
-      event.preventDefault();
-      if (!event.currentTarget.reportValidity()) {
-        return;
-      }
-      closeAuthDialog();
-      showToast(getTranslation('mockOtp'));
-    });
+    select('#auth-form').addEventListener('submit', submitAuth);
     document.addEventListener('click', (event) => {
       const actionElement = event.target.closest('[data-action]');
       if (!actionElement) {
@@ -547,6 +630,11 @@
     setView(route);
     bindEvents();
     api.getHealth().then(updateHealth);
+    api.getMe().then((result) => {
+      if (result.ok) {
+        updateUserProfile(result.data);
+      }
+    });
   }
 
   init();
