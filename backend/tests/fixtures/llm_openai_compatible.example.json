@@ -1,0 +1,5 @@
+{
+  "base_url": "https://your-openai-compatible-endpoint.example/v1",
+  "api_key": "",
+  "model": "your-model-name"
+}
