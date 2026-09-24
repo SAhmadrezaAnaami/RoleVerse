@@ -56,7 +56,7 @@ RoleVerse is a bilingual role-play chat platform where people can create relatio
 
 ## Current vertical slice
 
-The first usable slice is a character chat workspace backed by deterministic sample data. It proves the information architecture and interaction model before persistence and model integrations are added. The API boundary is designed so the sample data can be replaced by repository calls without changing the client interaction model.
+The current usable slice now includes a persistent character catalog, owner-scoped conversations, persisted localized greetings, and ordered preview messages. The client can discover seeded characters publicly, authenticate a member, create a conversation, send a message, and restore the conversation after reload. Assistant replies remain deterministic previews until the provider generation section is implemented.
 
 ## Non-goals for the first slice
 
@@ -74,4 +74,7 @@ The first usable slice is a character chat workspace backed by deterministic sam
 - All primary controls have visible keyboard focus and accessible names.
 - The chat composer supports a character selection and a local message interaction.
 - The FastAPI service exposes a versioned health endpoint and serves the client in local development.
+- Published characters are publicly discoverable and hidden characters are not exposed.
+- Authenticated users can create, reload, and append to only their own conversations.
+- Message history has deterministic ordering and idempotent client request keys.
 - The repository has documented setup, branch, changelog, and testing conventions.
