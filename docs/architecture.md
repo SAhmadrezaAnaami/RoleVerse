@@ -143,6 +143,27 @@ Conversation creation persists the localized character greeting before returning
 
 The current implementation keeps route dependencies thin: routes validate transport data and map domain errors, services enforce ownership and transactions, and repositories scope every query to the authenticated user where private data is involved.
 
-## Security and privacy boundaries
+## Current provider and generation section
+
+The provider boundary is server-owned and mock-first. `MockProvider` is selected whenever `LIVE_PROVIDER_ENABLED=false`, even if provider environment variables are present. An explicit live configuration can use environment variables or an explicitly named ignored fixture; the application never discovers local credential files automatically.
+
+Generation uses two authenticated routes after a user-only message is persisted:
+
+```text
+POST /api/v1/conversations/{conversation_id}/messages/{message_id}/response
+POST /api/v1/conversations/{conversation_id}/messages/{message_id}/responses
+```
+
+The first returns the existing message-pair JSON shape. The second emits normalized SSE `start`, `delta`, and `done` or `error` events. Provider output is accumulated in memory and finalized in a short database transaction, so a network stream does not hold a SQLite transaction open. The client uses a UTF-8-aware SSE parser, renders provisional assistant text, and can cancel the active run.
+
+`generation_runs` stores provider/model snapshots, prompt version, lifecycle state, token usage availability, pricing availability, finish reason, and integer micro-cost values. Failed and cancelled assistant messages remain auditable but are excluded from future prompt history. Owner-scoped status and cancellation routes are available at:
+
+```text
+GET  /api/v1/conversations/{conversation_id}/generations/{run_id}
+POST /api/v1/conversations/{conversation_id}/generations/{run_id}/cancel
+```
+
+The in-memory limiter is a development primitive for global and per-user generation quotas. A distributed limiter and durable event replay belong in the operations layer before production scale-out.
+
 
 Phone numbers, chat content, provider credentials, and audit events are sensitive. The implementation roadmap includes session hashing, OTP expiry and replay protection, bans, rate limits, secret-safe errors, audit records, retention controls, and provider-key encryption before production deployment.

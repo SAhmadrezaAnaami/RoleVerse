@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_base_url: str = ""
     openai_model: str = ""
+    provider_fixture_path: Path | None = None
+    provider_allowed_hosts: str = ""
+    live_provider_enabled: bool = False
+    provider_timeout_seconds: int = Field(default=60, ge=1, le=300)
+    provider_max_output_tokens: int = Field(default=512, ge=1, le=8192)
+    provider_input_price_micro_per_million: int = Field(default=0, ge=0)
+    provider_output_price_micro_per_million: int = Field(default=0, ge=0)
+    generation_rate_limit_per_user: int = Field(default=20, ge=1, le=1000)
+    generation_rate_limit_global: int = Field(default=100, ge=1, le=10000)
+    generation_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3600)
     client_directory: Path = Field(
         default_factory=lambda: Path(__file__).resolve().parents[3] / "client"
     )

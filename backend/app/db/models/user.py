@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -8,8 +8,9 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "users"
+    __table_args__ = (UniqueConstraint("phone", name="uq_users_phone"),)
 
-    phone: Mapped[str] = mapped_column(String(32), unique=True, index=True, nullable=False)
+    phone: Mapped[str] = mapped_column(String(32), index=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     role: Mapped[str] = mapped_column(String(16), default="user", index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="active", index=True, nullable=False)

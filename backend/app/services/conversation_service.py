@@ -30,7 +30,7 @@ class ConversationBundle:
 @dataclass
 class MessagePair:
     user_message: Message
-    assistant_message: Message
+    assistant_message: Message | None
 
 
 class ConversationService:
@@ -76,6 +76,7 @@ class ConversationService:
             "assistant",
             character["greeting"],
             1,
+            source="greeting",
         )
         greeting.created_at = now
         greeting.updated_at = now
@@ -124,6 +125,7 @@ class ConversationService:
         user_id: str,
         content: str,
         client_request_id: str | None,
+        include_preview: bool = True,
     ) -> MessagePair:
         bundle = self.get_for_user(conversation_id, user_id)
         if bundle.conversation.status != "active":
@@ -142,7 +144,7 @@ class ConversationService:
                     conversation_id,
                     existing.position + 1,
                 )
-                if assistant is not None:
+                if not include_preview or assistant is not None:
                     return MessagePair(existing, assistant)
         position = self.repository.max_position(self.session, conversation_id) + 1
         now = utc_now()
@@ -152,10 +154,15 @@ class ConversationService:
             "user",
             content,
             position,
-            client_request_id,
+            source="user",
+            client_request_id=client_request_id,
         )
         user_message.created_at = now
         user_message.updated_at = now
+        if not include_preview:
+            self.repository.touch(bundle.conversation, now)
+            self.session.commit()
+            return MessagePair(user_message, None)
         character = self.localized_character(
             bundle.character,
             bundle.conversation.locale,
@@ -166,6 +173,7 @@ class ConversationService:
             "assistant",
             character["sample_reply"] or character["greeting"],
             position + 1,
+            source="preview",
         )
         assistant_message.created_at = now
         assistant_message.updated_at = now

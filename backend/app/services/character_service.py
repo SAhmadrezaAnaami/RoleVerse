@@ -15,7 +15,8 @@ class CharacterService:
         self.session = session
         self.repository = CharacterRepository()
 
-    def localized_values(self, character: Character, locale: str) -> dict[str, Any]:
+    @staticmethod
+    def localized_values(character: Character, locale: str) -> dict[str, Any]:
         translations = character.translations or {}
         selected = translations.get(locale, {})
         return {
