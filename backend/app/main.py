@@ -31,7 +31,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for item in error.errors()
         ]
         headers = {}
-        if request.url.path.startswith(f"{settings.api_prefix}/auth"):
+        if (
+            request.url.path.startswith(f"{settings.api_prefix}/auth")
+            or request.url.path.startswith(f"{settings.api_prefix}/conversations")
+        ):
             headers = {"Cache-Control": "no-store", "Pragma": "no-cache"}
         return JSONResponse(status_code=422, content={"detail": details}, headers=headers)
 
@@ -41,7 +44,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault("X-Frame-Options", "DENY")
-        if request.url.path.startswith(f"{settings.api_prefix}/auth"):
+        if (
+            request.url.path.startswith(f"{settings.api_prefix}/auth")
+            or request.url.path.startswith(f"{settings.api_prefix}/conversations")
+        ):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
         return response

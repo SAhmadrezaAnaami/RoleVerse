@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_db
-from app.services import OtpService
+from app.services import CharacterService, ConversationService, OtpService
 
 
 def get_otp_service(
@@ -12,6 +12,14 @@ def get_otp_service(
     settings: Settings = Depends(get_settings),
 ) -> OtpService:
     return OtpService(session, settings)
+
+
+def get_character_service(session: Session = Depends(get_db)) -> CharacterService:
+    return CharacterService(session)
+
+
+def get_conversation_service(session: Session = Depends(get_db)) -> ConversationService:
+    return ConversationService(session)
 
 
 def get_current_user(

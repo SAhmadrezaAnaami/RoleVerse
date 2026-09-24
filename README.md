@@ -47,10 +47,11 @@ The current development section adds a development phone OTP flow, hashed OTP ch
 ```powershell
 cd backend
 python -m alembic upgrade head
+python -m scripts.seed_dev
 python -m uvicorn app.main:app --reload
 ```
 
-The sign-in code is printed only to the development server console. Provider test configuration is represented by `backend/tests/fixtures/llm_openai_compatible.example.json`; real local credentials belong in the ignored `*.local.json` file and must never be committed. Real streaming generation, characters persistence, and the admin panel are delivered in later sections.
+The sign-in code is printed only to the development server console. Characters are seeded explicitly and conversations/messages are persisted per authenticated user. Provider test configuration is represented by `backend/tests/fixtures/llm_openai_compatible.example.json`; real local credentials belong in the ignored `*.local.json` file and must never be committed. Real streaming generation and the admin panel are delivered in later sections.
 
 ## Rules
 
