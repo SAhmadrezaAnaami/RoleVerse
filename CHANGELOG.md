@@ -15,6 +15,10 @@ All notable changes to RoleVerse are documented in this file.
 - Semantic design-system reference for the project.
 - Development dependency manifest and API smoke tests.
 - Development version marker and documented branch integration workflow.
+- Development phone OTP authentication with console delivery, hashed challenges, and replay protection.
+- Opaque HttpOnly session cookies with current-user, logout, and logout-all endpoints.
+- Initial SQLAlchemy user/auth models and Alembic migration.
+- Safe provider-test fixture example with ignored local configuration.
 
 ### Changed
 
@@ -22,7 +26,8 @@ All notable changes to RoleVerse are documented in this file.
 
 ### Known limitations
 
-- Authentication is a visual development shell; real OTP persistence is not implemented yet.
+- Development OTP delivery uses the server console; production SMS delivery is not implemented.
+- Sessions currently use a development role column; normalized permissions and god-user promotion workflows are deferred.
 - Client conversations use deterministic preview data and are not persisted server-side.
 - OpenAI-compatible provider integration is not implemented yet.
 - The admin panel and marketplace publishing workflow are not implemented yet.
