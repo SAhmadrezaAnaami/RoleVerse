@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import Character
+from app.db.models import Character, ProviderConnection, ProviderModel, SystemSetting
 
 DEFAULT_CHARACTERS = [
     {
@@ -118,5 +118,57 @@ def seed_characters(session: Session) -> int:
             for key, value in values.items():
                 if key != "id":
                     setattr(character, key, value)
+    session.commit()
+    return created
+
+
+def seed_admin_defaults(session: Session) -> int:
+    created = 0
+    provider = session.scalar(
+        select(ProviderConnection).where(ProviderConnection.slug == "mock")
+    )
+    if provider is None:
+        provider = ProviderConnection(
+            id="00000000-0000-4000-8000-000000000004",
+            name="RoleVerse Preview",
+            slug="mock",
+            adapter="mock",
+            base_url="",
+            status="enabled",
+            is_default=True,
+            secret_source="none",
+        )
+        session.add(provider)
+        created += 1
+    model = session.scalar(
+        select(ProviderModel).where(
+            ProviderModel.provider_id == provider.id,
+            ProviderModel.name == "roleverse-preview",
+        )
+    )
+    if model is None:
+        session.add(
+            ProviderModel(
+                id="00000000-0000-4000-8000-000000000005",
+                provider_id=provider.id,
+                name="roleverse-preview",
+                display_name="RoleVerse Preview",
+                enabled=True,
+                context_window=8000,
+                max_output_tokens=512,
+            )
+        )
+        created += 1
+    defaults = {
+        "generation_rate_limit_per_user": 20,
+        "generation_rate_limit_global": 100,
+        "generation_rate_limit_window_seconds": 60,
+        "generation_max_output_tokens": 512,
+        "maintenance_mode": False,
+    }
+    for key, value in defaults.items():
+        if session.scalar(select(SystemSetting).where(SystemSetting.key == key)) is None:
+            session.add(SystemSetting(key=key, value=value))
+            created += 1
     session.commit()
     return created

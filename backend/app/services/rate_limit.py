@@ -15,6 +15,12 @@ class InMemoryRateLimiter:
         self._entries: dict[str, tuple[float, int]] = {}
         self._lock = Lock()
 
+    def clear_prefix(self, prefix: str) -> None:
+        with self._lock:
+            for key in list(self._entries):
+                if key.startswith(prefix):
+                    del self._entries[key]
+
     def check(
         self,
         key: str,

@@ -1,12 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.api.deps import get_current_user, get_otp_service
+from app.api.deps import get_current_user, get_otp_service, require_safe_origin
 from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.schemas.auth import OtpRequest, OtpRequestResponse, OtpVerifyRequest, SessionResponse, UserRead
 from app.services import AccountBlockedError, InvalidOtpError, OtpCooldownError, OtpService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"],
+    dependencies=[Depends(require_safe_origin)],
+)
 
 
 @router.post("/otp/request", response_model=OtpRequestResponse, status_code=status.HTTP_202_ACCEPTED)

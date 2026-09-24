@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="description" content="RoleVerse administration and operations workspace." />
+    <title>RoleVerse Admin</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('roleverse-theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+    <link rel="stylesheet" href="../assets/css/tokens.css" />
+    <link rel="stylesheet" href="../assets/css/layout.css" />
+    <link rel="stylesheet" href="../assets/css/components.css" />
+    <link rel="stylesheet" href="./admin.css" />
+  </head>
+  <body class="admin-body">
+    <svg class="svg-sprite" aria-hidden="true" focusable="false">
+      <symbol id="admin-icon-logo" viewBox="0 0 32 32">
+        <path d="M7 7.5A3.5 3.5 0 0 1 10.5 4h11A3.5 3.5 0 0 1 25 7.5v8a3.5 3.5 0 0 1-3.5 3.5H17l-5.6 5.1c-.8.7-2.1.1-2.1-.9v-4.2H10.5A3.5 3.5 0 0 1 7 15.5v-8Z" fill="currentColor" />
+        <path d="M12 10.5h8M12 14h5" fill="none" stroke="white" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="admin-icon-overview" viewBox="0 0 24 24">
+        <path d="M4 19V5M4 19h17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+        <path d="m7 15 3-4 3 2 5-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="admin-icon-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="M3.8 19a5.2 5.2 0 0 1 10.4 0M16 5.5a3 3 0 0 1 0 5.8M16 14a4.5 4.5 0 0 1 4.2 5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-provider" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="16" height="6" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <rect x="4" y="14" width="16" height="6" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="M8 7h.01M8 17h.01M12 7h5M12 17h5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="admin-icon-usage" viewBox="0 0 24 24">
+        <path d="M5 19V9M12 19V5M19 19v-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+        <path d="M3.5 19.5h17" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-settings" viewBox="0 0 24 24">
+        <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="m19.2 13.2 1.1.9-1.8 3.1-1.4-.5a7.7 7.7 0 0 1-1.5.9l-.3 1.5h-3.6l-.3-1.5a7.7 7.7 0 0 1-1.5-.9l-1.4.5-1.8-3.1 1.1-.9a7.4 7.4 0 0 1 0-1.8l-1.1-.9 1.8-3.1 1.4.5a7.7 7.7 0 0 1 1.5-.9l.3-1.5h3.6l.3 1.5a7.7 7.7 0 0 1 1.5.9l1.4-.5 1.8 3.1-1.1.9a7.4 7.4 0 0 1 0 1.8Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+      </symbol>
+      <symbol id="admin-icon-audit" viewBox="0 0 24 24">
+        <path d="M6 4.5h12v15H6z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-refresh" viewBox="0 0 24 24">
+        <path d="M19 8a7.5 7.5 0 0 0-13.2-1.8L4 8.5M4 5v3.5h3.5M5 16a7.5 7.5 0 0 0 13.2 1.8l1.8-2.3M20 19v-3.5h-3.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-menu" viewBox="0 0 24 24">
+        <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="admin-icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="admin-icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="M12 2.5v2M12 19.5v2M4.8 4.8l1.4 1.4M17.8 17.8l1.4 1.4M2.5 12h2M19.5 12h2M4.8 19.2l1.4-1.4M17.8 6.2l1.4-1.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-moon" viewBox="0 0 24 24">
+        <path d="M19.2 15.8A7.8 7.8 0 0 1 8.2 4.8 8.3 8.3 0 1 0 19.2 15.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="admin-icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.3-5.1-3.3-8.5S9.8 5.8 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" />
+      </symbol>
+      <symbol id="admin-icon-logout" viewBox="0 0 24 24">
+        <path d="M14 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H14M16 8l4 4-4 4M20 12H9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+    </svg>
+
+    <div class="admin-shell">
+      <aside id="admin-sidebar" class="admin-sidebar" aria-label="Administration navigation">
+        <div class="admin-sidebar-topline"></div>
+        <div class="admin-brand">
+          <span class="admin-brand-mark"><svg class="icon icon-lg"><use href="#admin-icon-logo"></use></svg></span>
+          <span><strong>RoleVerse</strong><small data-i18n="adminWorkspace">Admin workspace</small></span>
+        </div>
+        <span class="admin-mode-badge"><span></span><span data-i18n="adminDevelopmentMode">Development mode</span></span>
+        <nav class="admin-nav" aria-label="Admin sections">
+          <button class="admin-nav-item is-active" type="button" data-admin-route="overview"><svg class="icon"><use href="#admin-icon-overview"></use></svg><span data-i18n="adminOverview">Overview</span></button>
+          <button class="admin-nav-item" type="button" data-admin-route="users"><svg class="icon"><use href="#admin-icon-users"></use></svg><span data-i18n="adminUsers">Users &amp; access</span></button>
+          <button class="admin-nav-item" type="button" data-admin-route="providers"><svg class="icon"><use href="#admin-icon-provider"></use></svg><span data-i18n="adminProviders">Providers &amp; models</span></button>
+          <button class="admin-nav-item" type="button" data-admin-route="usage"><svg class="icon"><use href="#admin-icon-usage"></use></svg><span data-i18n="adminUsage">Usage &amp; cost</span></button>
+          <button class="admin-nav-item" type="button" data-admin-route="settings"><svg class="icon"><use href="#admin-icon-settings"></use></svg><span data-i18n="adminSettings">Settings &amp; limits</span></button>
+          <button class="admin-nav-item" type="button" data-admin-route="audit"><svg class="icon"><use href="#admin-icon-audit"></use></svg><span data-i18n="adminAudit">Audit log</span></button>
+        </nav>
+        <div class="admin-sidebar-bottom">
+          <a class="admin-back-link" href="../"><svg class="icon icon-sm"><use href="#admin-icon-overview"></use></svg><span data-i18n="adminBackToWorkspace">Back to workspace</span></a>
+          <div class="admin-operator"><span class="admin-operator-avatar">RV</span><span><strong id="admin-operator-name">Administrator</strong><small data-i18n="adminAdminRole">Administrator</small></span></div>
+          <button id="admin-logout" class="admin-logout" type="button"><svg class="icon icon-sm"><use href="#admin-icon-logout"></use></svg><span data-i18n="logout">Log out</span></button>
+        </div>
+      </aside>
+      <div id="admin-sidebar-scrim" class="admin-sidebar-scrim"></div>
+
+      <div class="admin-main">
+        <header class="admin-topbar">
+          <div class="admin-topbar-leading">
+            <button id="admin-menu-toggle" class="icon-button admin-menu-toggle" type="button" aria-label="Open administration navigation"><svg class="icon"><use href="#admin-icon-menu"></use></svg></button>
+            <div class="admin-breadcrumb"><span data-i18n="adminWorkspace">Admin workspace</span><span>/</span><strong id="admin-breadcrumb">Overview</strong></div>
+          </div>
+          <div class="admin-topbar-actions">
+            <span id="admin-updated" class="admin-updated" aria-live="polite"></span>
+            <button id="admin-refresh" class="admin-icon-button" type="button" aria-label="Refresh data" data-i18n-aria="adminRefresh"><svg class="icon"><use href="#admin-icon-refresh"></use></svg></button>
+            <button id="admin-language-toggle" class="admin-language-button" type="button" aria-label="Change language"><svg class="icon icon-sm"><use href="#admin-icon-globe"></use></svg><span id="admin-language-label">EN</span></button>
+            <button id="admin-theme-toggle" class="admin-icon-button" type="button" aria-label="Toggle theme"><svg class="icon admin-theme-sun"><use href="#admin-icon-sun"></use></svg><svg class="icon admin-theme-moon"><use href="#admin-icon-moon"></use></svg></button>
+          </div>
+        </header>
+
+        <main id="admin-content" class="admin-content" tabindex="-1">
+          <div id="admin-access-state" class="admin-access-state" hidden>
+            <div class="admin-access-icon"><svg class="icon icon-lg"><use href="#admin-icon-users"></use></svg></div>
+            <h1 id="admin-access-title">Administrator access is required</h1>
+            <p id="admin-access-message">Sign in with an administrator account to continue.</p>
+            <a class="primary-button" href="../"><span data-i18n="adminBackToWorkspace">Back to workspace</span></a>
+          </div>
+
+          <section class="admin-page is-visible" data-admin-page="overview" aria-labelledby="admin-overview-title">
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminWorkspace">Admin workspace</p><h1 id="admin-overview-title" data-i18n="adminOverview">Overview</h1><p data-i18n="adminOverviewCaption">A calm view of the people, providers, and stories moving through RoleVerse.</p></div><span class="admin-live-badge"><span></span><span data-i18n="adminLiveData">Server data</span></span></div>
+            <div id="admin-metric-grid" class="admin-metric-grid"></div>
+            <div class="admin-two-column">
+              <section class="admin-card"><div class="admin-card-heading"><div><h2 data-i18n="adminRecentActivity">Recent activity</h2><p data-i18n="adminRecentActivityCaption">Safe operational events from the control plane.</p></div><button class="admin-text-button" type="button" data-admin-route-link="audit" data-i18n="adminViewAll">View all</button></div><div id="admin-overview-audit" class="admin-event-list"></div></section>
+              <section class="admin-card"><div class="admin-card-heading"><div><h2 data-i18n="adminProviderHealth">Provider health</h2><p data-i18n="adminProviderHealthCaption">Configured connections, never credentials.</p></div><button class="admin-text-button" type="button" data-admin-route-link="providers" data-i18n="adminViewAll">View all</button></div><div id="admin-overview-providers" class="admin-health-list"></div></section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="users" aria-labelledby="admin-users-title" hidden>
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminUsers">Users &amp; access</p><h1 id="admin-users-title" data-i18n="adminUsersTitle">People and permissions</h1><p data-i18n="adminUsersCaption">Review roles and account status without exposing private phone numbers.</p></div></div>
+            <form id="admin-users-filter" class="admin-filter-bar"><label class="admin-search-field"><svg class="icon icon-sm"><use href="#admin-icon-users"></use></svg><input id="admin-user-search" type="search" placeholder="Search name or phone" data-i18n-placeholder="adminSearchUsers" /></label><select id="admin-user-status"><option value="" data-i18n="adminAllStatuses">All statuses</option><option value="active" data-i18n="adminActiveStatus">Active</option><option value="banned" data-i18n="adminBannedStatus">Banned</option></select><select id="admin-user-role"><option value="" data-i18n="adminAllRoles">All roles</option><option value="user" data-i18n="adminUserRole">User</option><option value="admin" data-i18n="adminAdminRole">Administrator</option></select><button class="admin-secondary-button" type="submit" data-i18n="adminSearch">Search</button></form>
+            <div class="admin-card admin-table-card"><div id="admin-users-table" class="admin-table-wrap"></div></div>
+          </section>
+
+          <section class="admin-page" data-admin-page="providers" aria-labelledby="admin-providers-title" hidden>
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminProviders">Providers &amp; models</p><h1 id="admin-providers-title" data-i18n="adminProvidersTitle">Generation connections</h1><p data-i18n="adminProvidersCaption">Manage safe metadata. API keys stay in the server secret source.</p></div></div>
+            <div class="admin-two-column admin-provider-layout"><section class="admin-card"><div class="admin-card-heading"><div><h2 data-i18n="adminConnections">Connections</h2><p data-i18n="adminConnectionsCaption">The browser never receives provider secrets.</p></div></div><div id="admin-providers-list" class="admin-provider-list"></div></section><section class="admin-card"><div class="admin-card-heading"><div><h2 data-i18n="adminAddProvider">Add provider</h2><p data-i18n="adminAddProviderCaption">Only safe connection metadata is accepted.</p></div></div><form id="admin-provider-form" class="admin-form"><label><span data-i18n="adminProviderName">Provider name</span><input name="name" required maxlength="120" /></label><label><span data-i18n="adminProviderSlug">Provider slug</span><input name="slug" required pattern="[a-z0-9][a-z0-9\-]{1,78}" maxlength="80" /></label><label><span data-i18n="adminAdapter">Adapter</span><select name="adapter"><option value="mock">mock</option><option value="openai-compatible">openai-compatible</option></select></label><label><span data-i18n="adminBaseUrl">Base URL</span><input name="base_url" maxlength="500" placeholder="https://api.example.com/v1" /></label><label><span data-i18n="adminStatus">Status</span><select name="status"><option value="disabled">disabled</option><option value="enabled">enabled</option><option value="degraded">degraded</option></select></label><label><span data-i18n="adminSecretSource">Secret source</span><select name="secret_source"><option value="none">none</option><option value="environment">environment</option></select></label><label class="admin-check-field"><input name="is_default" type="checkbox" /><span data-i18n="adminDefault">Default</span></label><button class="primary-button" type="submit" data-i18n="adminAddProvider">Add provider</button><p id="admin-provider-error" class="admin-form-message" role="alert"></p></form></section></div>
+            <section class="admin-card admin-models-card"><div class="admin-card-heading"><div><h2 data-i18n="adminModels">Models</h2><p data-i18n="adminModelsCaption">Model availability and pricing snapshots.</p></div></div><div id="admin-models-table" class="admin-table-wrap"></div><form id="admin-model-form" class="admin-form admin-model-form"><h3 data-i18n="adminAddModel">Add model</h3><div class="admin-settings-grid"><label><span data-i18n="adminModelName">Model name</span><input name="name" required maxlength="120" /></label><label><span data-i18n="adminDisplayName">Display name</span><input name="display_name" maxlength="120" /></label><label><span data-i18n="adminContextWindow">Context window</span><input name="context_window" type="number" min="0" value="8000" /></label><label><span data-i18n="adminOutputLimit">Output limit</span><input name="max_output_tokens" type="number" min="1" max="8192" value="512" /></label><label><span data-i18n="adminInputPrice">Input price</span><input name="input_price_micro_per_million" type="number" min="0" value="0" /></label><label><span data-i18n="adminOutputPrice">Output price</span><input name="output_price_micro_per_million" type="number" min="0" value="0" /></label></div><label class="admin-check-field"><input name="pricing_available" type="checkbox" /><span data-i18n="adminPricingAvailable">Pricing available</span></label><button class="primary-button" type="submit" data-i18n="adminAddModel">Add model</button><p id="admin-model-error" class="admin-form-message" role="alert"></p></form></section>
+          </section>
+
+          <section class="admin-page" data-admin-page="usage" aria-labelledby="admin-usage-title" hidden>
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminUsage">Usage &amp; cost</p><h1 id="admin-usage-title" data-i18n="adminUsageTitle">Generation ledger</h1><p data-i18n="adminUsageCaption">Stored provider usage and estimated cost. This is not a user charge.</p></div></div>
+            <div class="admin-card admin-table-card"><div id="admin-usage-table" class="admin-table-wrap"></div></div>
+          </section>
+
+          <section class="admin-page" data-admin-page="settings" aria-labelledby="admin-settings-title" hidden>
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminSettings">Settings &amp; limits</p><h1 id="admin-settings-title" data-i18n="adminSettingsTitle">Operational settings</h1><p data-i18n="adminSettingsCaption">Explicit saves with audit events. Secrets and database settings stay server-side.</p></div></div>
+            <form id="admin-settings-form" class="admin-card admin-settings-form"><div class="admin-settings-grid"><label><span data-i18n="adminPerUserLimit">Per-user generation limit</span><input name="generation_rate_limit_per_user" type="number" min="1" max="1000" /></label><label><span data-i18n="adminGlobalLimit">Global generation limit</span><input name="generation_rate_limit_global" type="number" min="1" max="10000" /></label><label><span data-i18n="adminWindowSeconds">Rate-limit window (seconds)</span><input name="generation_rate_limit_window_seconds" type="number" min="1" max="3600" /></label><label><span data-i18n="adminOutputLimit">Output limit</span><input name="generation_max_output_tokens" type="number" min="1" max="8192" /></label><label class="admin-check-field"><input name="maintenance_mode" type="checkbox" /><span data-i18n="adminMaintenanceMode">Maintenance mode</span></label></div><div class="admin-form-actions"><button class="primary-button" type="submit" data-i18n="adminSave">Save settings</button><span id="admin-settings-message" class="admin-form-message" role="status"></span></div></form>
+            <section class="admin-card admin-readonly-card"><div class="admin-card-heading"><div><h2 data-i18n="adminReadOnlySettings">Read-only runtime values</h2><p data-i18n="adminReadOnlySettingsCaption">These values come from the server environment.</p></div></div><div id="admin-readonly-settings" class="admin-readonly-list"></div></section>
+          </section>
+
+          <section class="admin-page" data-admin-page="audit" aria-labelledby="admin-audit-title" hidden>
+            <div class="admin-page-heading"><div><p class="admin-eyebrow" data-i18n="adminAudit">Audit log</p><h1 id="admin-audit-title" data-i18n="adminAuditTitle">Safe change history</h1><p data-i18n="adminAuditCaption">Append-only events for access, provider, model, and settings changes.</p></div></div>
+            <div class="admin-card admin-table-card"><div id="admin-audit-table" class="admin-table-wrap"></div></div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <dialog id="admin-action-dialog" class="admin-dialog">
+      <form id="admin-action-form" method="dialog" class="admin-dialog-panel">
+        <button id="admin-dialog-close" class="admin-dialog-close" type="button" aria-label="Close"><svg class="icon"><use href="#admin-icon-close"></use></svg></button>
+        <p class="admin-eyebrow" data-i18n="adminUsers">Users &amp; access</p>
+        <h2 id="admin-dialog-title">Ban user</h2>
+        <p id="admin-dialog-description" class="admin-dialog-description"></p>
+        <label id="admin-reason-field"><span data-i18n="adminReason">Reason</span><textarea id="admin-ban-reason" rows="4" maxlength="500" required></textarea></label>
+        <p id="admin-dialog-error" class="admin-form-message" role="alert"></p>
+        <div class="admin-form-actions"><button id="admin-dialog-cancel" class="admin-secondary-button" type="button" data-i18n="adminCancel">Cancel</button><button id="admin-dialog-submit" class="primary-button" type="submit" data-i18n="adminConfirm">Confirm</button></div>
+      </form>
+    </dialog>
+    <div id="admin-toast-region" class="admin-toast-region" aria-live="polite" aria-atomic="true"></div>
+    <script src="../assets/js/i18n.js"></script>
+    <script src="./admin.js"></script>
+  </body>
+</html>

@@ -37,6 +37,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             request.url.path.startswith(f"{settings.api_prefix}/auth")
             or request.url.path.startswith(f"{settings.api_prefix}/conversations")
+            or request.url.path.startswith(f"{settings.api_prefix}/admin")
         ):
             headers = {"Cache-Control": "no-store", "Pragma": "no-cache"}
         return JSONResponse(status_code=422, content={"detail": details}, headers=headers)
@@ -58,9 +59,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             request.url.path.startswith(f"{settings.api_prefix}/auth")
             or request.url.path.startswith(f"{settings.api_prefix}/conversations")
+            or request.url.path.startswith(f"{settings.api_prefix}/admin")
+            or request.url.path.startswith("/admin")
         ):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
+        if request.url.path.startswith("/admin"):
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            )
+            response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
     application.add_middleware(

@@ -24,6 +24,10 @@ def test_initial_migration_round_trip(tmp_path) -> None:
         "conversations",
         "messages",
         "generation_runs",
+        "provider_connections",
+        "provider_models",
+        "system_settings",
+        "audit_events",
     }.issubset(table_names)
     inspector = inspect(engine)
     assert "source" in {column["name"] for column in inspector.get_columns("messages")}
@@ -38,6 +42,14 @@ def test_initial_migration_round_trip(tmp_path) -> None:
         "output_tokens",
         "total_cost_micro",
     }.issubset(generation_columns)
+    provider_columns = {
+        column["name"] for column in inspector.get_columns("provider_connections")
+    }
+    assert {"adapter", "base_url", "secret_source", "is_default"}.issubset(provider_columns)
+    model_columns = {
+        column["name"] for column in inspector.get_columns("provider_models")
+    }
+    assert {"pricing_available", "max_output_tokens"}.issubset(model_columns)
     engine.dispose()
 
     downgrade(config, "base")

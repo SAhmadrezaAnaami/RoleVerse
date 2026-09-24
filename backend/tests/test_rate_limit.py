@@ -16,6 +16,13 @@ def test_rate_limiter_returns_remaining_capacity_then_blocks() -> None:
     assert blocked.retry_after_seconds >= 1
 
 
+def test_rate_limit_clear_prefix_resets_counters() -> None:
+    limiter = InMemoryRateLimiter()
+    limiter.check("generation:user:1", 1, 60)
+    limiter.clear_prefix("generation:")
+    assert limiter.check("generation:user:1", 1, 60).allowed is True
+
+
 def test_rate_limit_keys_are_isolated() -> None:
     limiter = InMemoryRateLimiter()
     limiter.check("user-1", 1, 60)
