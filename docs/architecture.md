@@ -128,6 +128,21 @@ The role column is an initial development boundary. A normalized role/permission
 
 The development OTP sender writes only a masked phone and generated code to the server console. It is rejected when the service is configured for production until a real delivery adapter is supplied. Browser storage contains only theme and language preferences; sessions use an HttpOnly cookie.
 
+## Current character and conversation section
+
+The persisted slice now includes:
+
+- `characters` for curated bilingual character identity and public discovery metadata
+- `conversations` for user-owned chat sessions with a fixed `en`/`fa` locale
+- `messages` for ordered persisted turns with client request idempotency
+- Alembic migration `0002_characters_chats`
+- Explicit development seeding through `python -m scripts.seed_dev`
+- Public character list/detail routes and authenticated conversation/message routes
+
+Conversation creation persists the localized character greeting before returning the conversation. Message sending uses a server-owned role and position. The current assistant response is explicitly a deterministic preview; the future provider generation service will replace that step without changing the client message contract.
+
+The current implementation keeps route dependencies thin: routes validate transport data and map domain errors, services enforce ownership and transactions, and repositories scope every query to the authenticated user where private data is involved.
+
 ## Security and privacy boundaries
 
 Phone numbers, chat content, provider credentials, and audit events are sensitive. The implementation roadmap includes session hashing, OTP expiry and replay protection, bans, rate limits, secret-safe errors, audit records, retention controls, and provider-key encryption before production deployment.

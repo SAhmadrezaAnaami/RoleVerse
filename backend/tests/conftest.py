@@ -5,11 +5,12 @@ import pytest
 from alembic.command import upgrade
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.api.deps import get_otp_service
 from app.core.config import Settings, get_settings
+from app.db.seed import seed_characters
 from app.db.session import get_db
 from app.main import create_app
 from app.services import OtpService
@@ -72,11 +73,20 @@ def migrated_db(tmp_path):
         connect_args={"check_same_thread": False},
         pool_pre_ping=True,
     )
+
+    @event.listens_for(engine, "connect")
+    def enable_foreign_keys(dbapi_connection, connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     session_factory = sessionmaker(
         bind=engine,
         autoflush=False,
         expire_on_commit=False,
     )
+    with session_factory() as session:
+        seed_characters(session)
     yield session_factory, database_url
     engine.dispose()
 

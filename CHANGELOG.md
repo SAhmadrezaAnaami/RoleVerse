@@ -19,6 +19,9 @@ All notable changes to RoleVerse are documented in this file.
 - Opaque HttpOnly session cookies with current-user, logout, and logout-all endpoints.
 - Initial SQLAlchemy user/auth models and Alembic migration.
 - Safe provider-test fixture example with ignored local configuration.
+- Persistent bilingual character catalog with public discovery and detail APIs.
+- Owner-scoped conversations with localized greetings and ordered idempotent messages.
+- Development preview replies and API-backed client conversation restoration.
 
 ### Changed
 
