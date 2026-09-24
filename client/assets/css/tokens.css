@@ -1,0 +1,139 @@
+:root {
+  color-scheme: light;
+  --font-latin: "Plus Jakarta Sans", "Vazirmatn", sans-serif;
+  --font-arabic: "Vazirmatn", "Plus Jakarta Sans", sans-serif;
+  --page-bg: #f7f7fb;
+  --page-bg-accent: rgba(124, 58, 237, 0.08);
+  --surface: #ffffff;
+  --surface-soft: #fbfaff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f1eff8;
+  --surface-hover: #f5f2fd;
+  --text-strong: #1b1530;
+  --text: #40395d;
+  --text-muted: #5f5875;
+  --text-subtle: #6b647e;
+  --border: #e9e5f2;
+  --border-strong: #dcd5ec;
+  --primary: #7c3aed;
+  --primary-strong: #6d28d9;
+  --primary-soft: #f1eafe;
+  --accent: #ec4899;
+  --accent-soft: #fce7f3;
+  --cyan: #036b83;
+  --cyan-soft: #e0f5f8;
+  --orange: #b94d0a;
+  --orange-soft: #fff0e4;
+  --success: #087a5b;
+  --success-soft: #e3f8f0;
+  --danger: #dc4a63;
+  --danger-soft: #fff0f2;
+  --shadow-xs: 0 1px 2px rgba(33, 22, 66, 0.04);
+  --shadow-sm: 0 8px 24px rgba(46, 31, 92, 0.06);
+  --shadow-md: 0 18px 48px rgba(46, 31, 92, 0.1);
+  --shadow-glow: 0 12px 34px rgba(124, 58, 237, 0.2);
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --sidebar-width: 278px;
+  --topbar-height: 76px;
+  --transition-fast: 160ms ease;
+  --transition-base: 240ms ease;
+  --transition-slow: 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --page-bg: #15121f;
+  --page-bg-accent: rgba(167, 139, 250, 0.1);
+  --surface: #211c30;
+  --surface-soft: #272139;
+  --surface-elevated: #2b2440;
+  --surface-muted: #312942;
+  --surface-hover: #352b4a;
+  --text-strong: #f8f5ff;
+  --text: #e2dced;
+  --text-muted: #c1b8d4;
+  --text-subtle: #b8afc9;
+  --border: #39304d;
+  --border-strong: #4b3c67;
+  --primary: #a78bfa;
+  --primary-strong: #c4b5fd;
+  --primary-soft: #342653;
+  --accent: #f472b6;
+  --accent-soft: #4a203b;
+  --cyan: #67e8f9;
+  --cyan-soft: #163c47;
+  --orange: #fdba74;
+  --orange-soft: #4a2d1d;
+  --success: #6ee7b7;
+  --success-soft: #173d34;
+  --danger: #fb8ba1;
+  --danger-soft: #4a2430;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.16);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.18);
+  --shadow-md: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-glow: 0 12px 34px rgba(167, 139, 250, 0.22);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--page-bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 88% 8%, var(--page-bg-accent), transparent 28rem),
+    var(--page-bg);
+  color: var(--text);
+  font-family: var(--font-latin);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+html[lang="fa"] body {
+  font-family: var(--font-arabic);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--primary);
+  color: #ffffff;
+}
