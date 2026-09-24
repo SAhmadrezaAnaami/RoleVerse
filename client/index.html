@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta
+      name="description"
+      content="RoleVerse is a bilingual role-play chat workspace for memorable characters."
+    />
+    <title>RoleVerse — Your characters, your stories</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('roleverse-theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          document.documentElement.dataset.theme = savedTheme;
+        }
+      } catch (error) {
+        document.documentElement.dataset.theme = 'light';
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              roleverse: {
+                50: '#faf5ff',
+                100: '#f3e8ff',
+                500: '#7c3aed',
+                600: '#6d28d9',
+                700: '#5b21b6',
+              },
+            },
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'Vazirmatn', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+    <link rel="stylesheet" href="./assets/css/tokens.css" />
+    <link rel="stylesheet" href="./assets/css/layout.css" />
+    <link rel="stylesheet" href="./assets/css/components.css" />
+    <link rel="stylesheet" href="./assets/css/responsive.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true" focusable="false">
+      <symbol id="icon-logo" viewBox="0 0 32 32">
+        <path d="M7 7.5A3.5 3.5 0 0 1 10.5 4h11A3.5 3.5 0 0 1 25 7.5v8a3.5 3.5 0 0 1-3.5 3.5H17l-5.6 5.1c-.8.7-2.1.1-2.1-.9v-4.2H10.5A3.5 3.5 0 0 1 7 15.5v-8Z" fill="currentColor" />
+        <path d="M12 10.5h8M12 14h5" fill="none" stroke="white" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-chat" viewBox="0 0 24 24">
+        <path d="M5.5 18.5 4 21l4.2-1.5A8.5 8.5 0 1 0 5.5 18.5Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.4" />
+      </symbol>
+      <symbol id="icon-compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="m15.8 8.2-2.1 5.5-5.5 2.1 2.1-5.5 5.5-2.1Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-store" viewBox="0 0 24 24">
+        <path d="M4 10.5h16M5.5 10.5v8A1.5 1.5 0 0 0 7 20h10a1.5 1.5 0 0 0 1.5-1.5v-8M4 10.5 6 4h12l2 6.5M9 20v-5h6v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-heart" viewBox="0 0 24 24">
+        <path d="M20.5 8.8c0 5.3-8.5 10-8.5 10s-8.5-4.7-8.5-10A4.3 4.3 0 0 1 12 6.2a4.3 4.3 0 0 1 8.5 2.6Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="m19.2 13.2 1.1.9-1.8 3.1-1.4-.5a7.7 7.7 0 0 1-1.5.9l-.3 1.5h-3.6l-.3-1.5a7.7 7.7 0 0 1-1.5-.9l-1.4.5-1.8-3.1 1.1-.9a7.2 7.2 0 0 1 0-1.8l-1.1-.9 1.8-3.1 1.4.5a7.7 7.7 0 0 1 1.5-.9l.3-1.5h3.6l.3 1.5a7.7 7.7 0 0 1 1.5.9l1.4-.5 1.8 3.1-1.1.9a7.2 7.2 0 0 1 0 1.8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5" />
+      </symbol>
+      <symbol id="icon-menu" viewBox="0 0 24 24">
+        <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="M12 2.5v2M12 19.5v2M4.8 4.8l1.4 1.4M17.8 17.8l1.4 1.4M2.5 12h2M19.5 12h2M4.8 19.2l1.4-1.4M17.8 6.2l1.4-1.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M19.2 15.8A7.8 7.8 0 0 1 8.2 4.8 8.3 8.3 0 1 0 19.2 15.8Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-bell" viewBox="0 0 24 24">
+        <path d="M18 10a6 6 0 0 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 17 18 17 18 10ZM10 21h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="10.8" cy="10.8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8" />
+        <path d="m16 16 4.2 4.2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+      <symbol id="icon-more" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+        <circle cx="19" cy="12" r="1.2" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-send" viewBox="0 0 24 24">
+        <path d="m4 4 16 8-16 8 3-8-3-8Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="M7 12h13" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-sparkles" viewBox="0 0 24 24">
+        <path d="m12 3 1.2 4.8L18 9l-4.8 1.2L12 15l-1.2-4.8L6 9l4.8-1.2L12 3ZM19 14l.7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" />
+      </symbol>
+      <symbol id="icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M3.8 12h16.4M12 3.5c2.2 2.3 3.3 5.1 3.3 8.5S14.2 18.2 12 20.5c-2.2-2.3-3.3-5.1-3.3-8.5S9.8 5.8 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" />
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 24 24">
+        <path d="M12 3.5 19 6v5.3c0 4.2-2.8 7.8-7 9.2-4.2-1.4-7-5-7-9.2V6l7-2.5Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.7" />
+        <path d="m8.8 12 2.1 2.1 4.4-4.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" />
+        <path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" />
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" />
+      </symbol>
+    </svg>
+
+    <a class="skip-link" href="#main-content" data-i18n="skipToContent">Skip to content</a>
+
+    <div class="app-shell">
+      <aside id="sidebar" class="sidebar" aria-label="Primary navigation">
+        <div class="sidebar-topline"></div>
+        <div class="brand-lockup">
+          <span class="brand-mark"><svg class="icon icon-lg"><use href="#icon-logo"></use></svg></span>
+          <span class="brand-name">Role<span>Verse</span></span>
+        </div>
+
+        <button class="new-chat-button" type="button" data-action="new-chat">
+          <svg class="icon"><use href="#icon-plus"></use></svg>
+          <span data-i18n="newChat">New conversation</span>
+          <span class="shortcut">⌘ K</span>
+        </button>
+
+        <nav class="primary-nav" aria-label="Workspace">
+          <p class="nav-label" data-i18n="workspace">Workspace</p>
+          <button class="nav-item is-active" type="button" data-view-target="chat" aria-current="page">
+            <svg class="icon"><use href="#icon-chat"></use></svg>
+            <span data-i18n="chats">Chats</span>
+            <span class="nav-count">4</span>
+          </button>
+          <button class="nav-item" type="button" data-view-target="discover">
+            <svg class="icon"><use href="#icon-compass"></use></svg>
+            <span data-i18n="discover">Discover</span>
+          </button>
+          <button class="nav-item" type="button" data-view-target="marketplace">
+            <svg class="icon"><use href="#icon-store"></use></svg>
+            <span data-i18n="marketplace">Marketplace</span>
+            <span class="nav-dot"></span>
+          </button>
+          <button class="nav-item" type="button" data-view-target="favorites">
+            <svg class="icon"><use href="#icon-heart"></use></svg>
+            <span data-i18n="favorites">Favorites</span>
+          </button>
+        </nav>
+
+        <div class="recent-section">
+          <div class="section-heading">
+            <p class="nav-label" data-i18n="recent">Recent</p>
+            <button class="icon-button small" type="button" aria-label="More recent conversations" data-i18n-aria="moreRecent">
+              <svg class="icon"><use href="#icon-more"></use></svg>
+            </button>
+          </div>
+          <div id="conversation-list" class="conversation-list"></div>
+        </div>
+
+        <div class="sidebar-bottom">
+          <div class="free-plan-card">
+            <div class="free-plan-icon"><svg class="icon"><use href="#icon-sparkles"></use></svg></div>
+            <div>
+              <strong data-i18n="freeForever">Free forever</strong>
+              <span data-i18n="freePlanCaption">No plans. Just stories.</span>
+            </div>
+            <svg class="icon icon-sm plan-arrow"><use href="#icon-more"></use></svg>
+          </div>
+          <button class="profile-button" type="button" data-action="open-auth">
+            <span class="avatar avatar-small avatar-alex">AM</span>
+            <span class="profile-copy">
+              <strong>Alex Morgan</strong>
+              <small data-i18n="personalSpace">Personal space</small>
+            </span>
+            <svg class="icon icon-sm"><use href="#icon-settings"></use></svg>
+          </button>
+        </div>
+      </aside>
+
+      <div id="sidebar-scrim" class="sidebar-scrim" data-action="close-sidebar"></div>
+
+      <main id="main-content" class="main-panel">
+        <header class="topbar">
+          <div class="topbar-leading">
+            <button class="icon-button mobile-menu-button" type="button" aria-label="Open navigation" data-i18n-aria="openNavigation" data-action="open-sidebar">
+              <svg class="icon"><use href="#icon-menu"></use></svg>
+            </button>
+            <div class="breadcrumb">
+              <span class="breadcrumb-muted" data-i18n="workspace">Workspace</span>
+              <span class="breadcrumb-slash">/</span>
+              <strong id="breadcrumb-current" data-i18n="chats">Chats</strong>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <div id="health-status" class="service-status" data-state="checking" aria-live="polite">
+              <span class="status-dot"></span>
+              <span class="status-label" data-i18n="checkingService">Checking service</span>
+            </div>
+            <button id="language-toggle" class="language-button" type="button" aria-label="Change language" data-i18n-aria="changeLanguage">
+              <svg class="icon icon-sm"><use href="#icon-globe"></use></svg>
+              <span id="language-label">EN</span>
+            </button>
+            <button id="theme-toggle" class="icon-button" type="button" aria-label="Toggle theme" data-i18n-aria="toggleTheme">
+              <svg class="icon icon-sun"><use href="#icon-sun"></use></svg>
+              <svg class="icon icon-moon"><use href="#icon-moon"></use></svg>
+            </button>
+            <button class="icon-button notification-button" type="button" aria-label="Notifications" data-i18n-aria="notifications">
+              <svg class="icon"><use href="#icon-bell"></use></svg>
+              <span class="notification-dot"></span>
+            </button>
+            <button class="avatar avatar-top avatar-alex" type="button" aria-label="Open account" data-i18n-aria="openAccount" data-action="open-auth">AM</button>
+          </div>
+        </header>
+
+        <section class="view is-visible" data-view="chat" aria-labelledby="chat-view-title">
+          <div class="chat-layout">
+            <section class="conversation-panel" aria-labelledby="chat-view-title">
+              <div class="conversation-header">
+                <div class="conversation-character">
+                  <span id="active-avatar" class="avatar avatar-large avatar-luna">LV</span>
+                  <div>
+                    <div class="character-name-row">
+                      <h1 id="chat-view-title" data-i18n="lunaGreetingTitle">A quiet moment with Luna</h1>
+                      <span class="online-badge"><span></span><span data-i18n="online">Online</span></span>
+                    </div>
+                    <p id="active-character-subtitle" class="conversation-subtitle" data-i18n="lunaSubtitle">The stargazer · remembers your last conversation</p>
+                  </div>
+                </div>
+                <div class="conversation-actions">
+                  <button class="soft-button" type="button" data-action="favorite" aria-label="Add to favorites" data-i18n-aria="addFavorite">
+                    <svg class="icon"><use href="#icon-heart"></use></svg>
+                  </button>
+                  <button class="soft-button" type="button" data-action="more" aria-label="More options" data-i18n-aria="moreOptions">
+                    <svg class="icon"><use href="#icon-more"></use></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div id="message-list" class="message-list" aria-live="polite" aria-label="Conversation messages">
+                <div class="day-divider"><span data-i18n="today">Today</span></div>
+                <article class="message message-assistant">
+                  <span class="avatar avatar-message avatar-luna">LV</span>
+                  <div class="message-body">
+                    <div class="message-meta"><strong>Luna Vale</strong><time datetime="2026-09-24T19:20:00">7:20 PM</time></div>
+                    <div class="message-bubble">The sky is doing that impossible thing again — turning the last light into a little river. I saved the best view for you.</div>
+                  </div>
+                </article>
+                <article class="message message-user">
+                  <div class="message-body">
+                    <div class="message-meta"><time datetime="2026-09-24T19:21:00">7:21 PM</time><strong>You</strong></div>
+                    <div class="message-bubble">I knew you would. Should we make a wish before it disappears?</div>
+                  </div>
+                  <span class="avatar avatar-message avatar-alex">AM</span>
+                </article>
+                <article class="message message-assistant">
+                  <span class="avatar avatar-message avatar-luna">LV</span>
+                  <div class="message-body">
+                    <div class="message-meta"><strong>Luna Vale</strong><time datetime="2026-09-24T19:21:00">7:21 PM</time></div>
+                    <div class="message-bubble">Always. I’ll close my eyes first — you can keep the secret safe.</div>
+                  </div>
+                </article>
+              </div>
+
+              <div id="typing-indicator" class="typing-indicator" aria-live="polite" aria-hidden="true">
+                <span class="avatar avatar-message avatar-luna">LV</span>
+                <span class="typing-bubble"><i></i><i></i><i></i></span>
+                <span data-i18n="lunaTyping">Luna is typing</span>
+              </div>
+
+              <form id="composer" class="composer">
+                <div class="composer-box">
+                  <textarea id="message-input" rows="1" maxlength="2000" placeholder="Write a message…" data-i18n-placeholder="messagePlaceholder" aria-label="Message Luna" data-i18n-aria="messageLuna"></textarea>
+                  <div class="composer-toolbar">
+                    <div class="composer-tools">
+                      <button class="composer-tool" type="button" aria-label="Add attachment" data-i18n-aria="addAttachment">
+                        <svg class="icon icon-sm"><use href="#icon-plus"></use></svg>
+                      </button>
+                      <span class="composer-mode" data-i18n="roleplayMode">Roleplay mode</span>
+                    </div>
+                    <button id="send-message" class="send-button" type="submit" aria-label="Send message" data-i18n-aria="sendMessage">
+                      <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="composer-disclaimer" data-i18n="composerDisclaimer">RoleVerse can make mistakes. Stay curious and kind.</p>
+              </form>
+            </section>
+
+            <aside class="character-panel" aria-label="Character details">
+              <div class="character-panel-card">
+                <div class="character-cover">
+                  <div class="cover-glow cover-glow-one"></div>
+                  <div class="cover-glow cover-glow-two"></div>
+                  <span class="cover-spark spark-one">✦</span>
+                  <span class="cover-spark spark-two">✧</span>
+                  <span class="cover-orbit orbit-one"></span>
+                  <span class="cover-orbit orbit-two"></span>
+                  <div class="cover-character-avatar avatar avatar-xl avatar-luna">LV</div>
+                </div>
+                <div class="character-panel-content">
+                  <div class="character-panel-heading">
+                    <div>
+                      <h2 data-i18n="lunaName">Luna Vale</h2>
+                      <p data-i18n="stargazer">The stargazer</p>
+                    </div>
+                    <span class="availability-pill"><span></span><span data-i18n="readyToChat">Ready to chat</span></span>
+                  </div>
+                  <p class="character-description" data-i18n="lunaDescription">A gentle cosmic romantic with a sharp sense of humor and a notebook full of unfinished stories.</p>
+                  <div class="tag-list">
+                    <span class="tag tag-violet">Stargazer</span>
+                    <span class="tag tag-cyan">Poetic</span>
+                    <span class="tag tag-orange">Warm</span>
+                  </div>
+                  <div class="character-stats">
+                    <div><strong>12</strong><span data-i18n="sharedMoments">Shared moments</span></div>
+                    <div><strong>4.9</strong><span data-i18n="vibeScore">Vibe score</span></div>
+                    <div><strong>86%</strong><span data-i18n="memoryMatch">Memory match</span></div>
+                  </div>
+                  <div class="panel-divider"></div>
+                  <div class="memory-row">
+                    <div class="memory-icon"><svg class="icon icon-sm"><use href="#icon-clock"></use></svg></div>
+                    <div><span data-i18n="memoryNote">Memory note</span><p data-i18n="memoryNoteValue">You both like late-night conversations and impossible questions.</p></div>
+                  </div>
+                  <button class="outline-action" type="button" data-action="open-character" data-i18n="viewCharacter">View character profile <span>↗</span></button>
+                </div>
+              </div>
+              <div class="small-trust-card">
+                <div class="trust-icon"><svg class="icon icon-sm"><use href="#icon-shield"></use></svg></div>
+                <div><strong data-i18n="safeSpace">A softer kind of space</strong><p data-i18n="safeSpaceCaption">Your conversations stay yours.</p></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" data-view="discover" aria-labelledby="discover-view-title" hidden>
+          <div class="page-container">
+            <div class="page-heading-row">
+              <div>
+                <p class="eyebrow" data-i18n="discoverEyebrow">Find your next favorite</p>
+                <h1 id="discover-view-title" data-i18n="discoverTitle">Discover characters</h1>
+                <p class="page-description" data-i18n="discoverDescription">Meet personalities with a point of view, a story to tell, and room for yours.</p>
+              </div>
+              <label class="search-field">
+                <svg class="icon icon-sm"><use href="#icon-search"></use></svg>
+                <input id="character-search" type="search" placeholder="Search characters" data-i18n-placeholder="searchCharacters" aria-label="Search characters" data-i18n-aria="searchCharacters" />
+              </label>
+            </div>
+            <div id="discover-grid" class="character-grid"></div>
+          </div>
+        </section>
+
+        <section class="view" data-view="marketplace" aria-labelledby="marketplace-view-title" hidden>
+          <div class="page-container">
+            <div class="marketplace-banner">
+              <div>
+                <p class="eyebrow" data-i18n="marketplaceEyebrow">Character marketplace</p>
+                <h1 id="marketplace-view-title" data-i18n="marketplaceTitle">Made for the curious</h1>
+                <p data-i18n="marketplaceDescription">Explore community-built characters, then start a story that belongs only to you.</p>
+                <button class="primary-button" type="button" data-action="browse-marketplace" data-i18n="browseCharacters">Browse characters</button>
+              </div>
+              <div class="marketplace-art" aria-hidden="true">
+                <span class="art-orbit art-orbit-one"></span>
+                <span class="art-orbit art-orbit-two"></span>
+                <span class="art-card art-card-one">✦</span>
+                <span class="art-card art-card-two">✧</span>
+                <span class="art-card art-card-three">◌</span>
+                <span class="art-sun"></span>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label" data-i18n="browseBy">Browse by</span>
+              <button class="filter-chip is-active" type="button" data-i18n="allCharacters">All characters</button>
+              <button class="filter-chip" type="button" data-i18n="romance">Romance</button>
+              <button class="filter-chip" type="button" data-i18n="adventure">Adventure</button>
+              <button class="filter-chip" type="button" data-i18n="mystery">Mystery</button>
+              <button class="filter-chip" type="button" data-i18n="comedy">Comedy</button>
+            </div>
+            <div id="marketplace-grid" class="character-grid"></div>
+          </div>
+        </section>
+
+        <section class="view" data-view="favorites" aria-labelledby="favorites-view-title" hidden>
+          <div class="page-container">
+            <div class="page-heading-row compact-heading">
+              <div>
+                <p class="eyebrow" data-i18n="yourWorld">Your world</p>
+                <h1 id="favorites-view-title" data-i18n="favoritesTitle">Favorites</h1>
+                <p class="page-description" data-i18n="favoritesDescription">Keep the characters you want to return to close at hand.</p>
+              </div>
+              <span class="favorites-count">3 <span data-i18n="savedCharacters">saved characters</span></span>
+            </div>
+            <div id="favorites-grid" class="character-grid"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="auth-dialog" class="auth-dialog">
+      <div class="dialog-panel">
+        <button class="dialog-close icon-button" type="button" data-action="close-auth" aria-label="Close dialog" data-i18n-aria="closeDialog">
+          <svg class="icon"><use href="#icon-close"></use></svg>
+        </button>
+        <div class="dialog-brand"><span class="brand-mark small"><svg class="icon icon-sm"><use href="#icon-logo"></use></svg></span><span>Role<span>Verse</span></span></div>
+        <div class="dialog-heading">
+          <p class="eyebrow" data-i18n="welcomeBack">Welcome back</p>
+          <h2 data-i18n="signInTitle">Sign in to your stories</h2>
+          <p data-i18n="signInDescription">Use your phone number to continue. For development, your OTP will appear in the server console.</p>
+        </div>
+        <form id="auth-form" class="auth-form">
+          <label class="form-field">
+            <span data-i18n="phoneNumber">Phone number</span>
+            <input id="phone-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="+1 555 000 0000" required />
+          </label>
+          <label id="otp-field" class="form-field" hidden>
+            <span data-i18n="otpCode">Verification code</span>
+            <input id="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required />
+          </label>
+          <p id="auth-error" class="form-error" role="alert" hidden></p>
+          <button class="primary-button full-width" type="submit" data-i18n="sendOtp">Send verification code</button>
+        </form>
+        <p class="dialog-legal" data-i18n="dialogLegal">By continuing, you agree to keep every conversation kind and imaginative.</p>
+      </div>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <script src="./assets/js/data.js"></script>
+    <script src="./assets/js/i18n.js"></script>
+    <script src="./assets/js/api.js"></script>
+    <script src="./assets/js/app.js"></script>
+  </body>
+</html>
