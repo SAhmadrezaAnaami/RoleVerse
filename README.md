@@ -42,7 +42,15 @@ cd backend
 python -m pytest
 ```
 
-The first development slice uses deterministic client data. Real OTP, database persistence, OpenAI-compatible generation, and the admin panel are delivered in later sections.
+The current development section adds a development phone OTP flow, hashed OTP challenges, opaque cookie sessions, SQLAlchemy models, and an initial Alembic migration. Before starting the application against a new database, run:
+
+```powershell
+cd backend
+python -m alembic upgrade head
+python -m uvicorn app.main:app --reload
+```
+
+The sign-in code is printed only to the development server console. Provider test configuration is represented by `backend/tests/fixtures/llm_openai_compatible.example.json`; real local credentials belong in the ignored `*.local.json` file and must never be committed. Real streaming generation, characters persistence, and the admin panel are delivered in later sections.
 
 ## Rules
 
