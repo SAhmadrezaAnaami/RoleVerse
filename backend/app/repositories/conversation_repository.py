@@ -51,13 +51,17 @@ class ConversationRepository:
     def message_count(self, session: Session, conversation_id: str) -> int:
         statement = select(func.count(Message.id)).where(
             Message.conversation_id == conversation_id,
+            Message.status == "complete",
         )
         return session.scalar(statement) or 0
 
     def last_message(self, session: Session, conversation_id: str) -> Message | None:
         statement = (
             select(Message)
-            .where(Message.conversation_id == conversation_id)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.status == "complete",
+            )
             .order_by(Message.position.desc())
             .limit(1)
         )
@@ -76,6 +80,25 @@ class ConversationRepository:
             .limit(limit)
         )
         return list(reversed(list(session.scalars(statement))))
+
+    def get_message_by_id(
+        self,
+        session: Session,
+        message_id: str,
+    ) -> Message | None:
+        return session.get(Message, message_id)
+
+    def get_message_for_conversation(
+        self,
+        session: Session,
+        conversation_id: str,
+        message_id: str,
+    ) -> Message | None:
+        statement = select(Message).where(
+            Message.conversation_id == conversation_id,
+            Message.id == message_id,
+        )
+        return session.scalar(statement)
 
     def get_message_by_request(
         self,
@@ -114,11 +137,13 @@ class ConversationRepository:
         role: str,
         content: str,
         position: int,
+        source: str = "user",
         client_request_id: str | None = None,
     ) -> Message:
         message = Message(
             conversation_id=conversation_id,
             role=role,
+            source=source,
             content=content,
             position=position,
             client_request_id=client_request_id,

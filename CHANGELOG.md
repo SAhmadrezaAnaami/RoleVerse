@@ -22,6 +22,12 @@ All notable changes to RoleVerse are documented in this file.
 - Persistent bilingual character catalog with public discovery and detail APIs.
 - Owner-scoped conversations with localized greetings and ordered idempotent messages.
 - Development preview replies and API-backed client conversation restoration.
+- Mock-first OpenAI-compatible provider boundary with explicit live-provider configuration and secret-safe URL validation.
+- Persisted generation runs with queued, streaming, complete, failed, and cancelled states.
+- Non-streaming and SSE streaming generation routes with ordered message persistence and safe error events.
+- Generation usage and integer micro-cost snapshots, finish reasons, and owner-scoped status/cancel routes.
+- Client SSE parsing, streaming message states, cancellation, and authenticated conversation recovery.
+- In-memory global and per-user generation rate-limit primitives.
 
 ### Changed
 
@@ -31,6 +37,6 @@ All notable changes to RoleVerse are documented in this file.
 
 - Development OTP delivery uses the server console; production SMS delivery is not implemented.
 - Sessions currently use a development role column; normalized permissions and god-user promotion workflows are deferred.
-- Client conversations use deterministic preview data and are not persisted server-side.
-- OpenAI-compatible provider integration is not implemented yet.
+- Anonymous client conversations still use deterministic local preview data.
+- Live provider calls, durable resumable event replay, and production provider administration require explicit operational configuration and are not enabled by default.
 - The admin panel and marketplace publishing workflow are not implemented yet.

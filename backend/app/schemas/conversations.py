@@ -39,8 +39,11 @@ class MessageRead(BaseModel):
 
 
 class MessageCreateRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     content: str = Field(min_length=1, max_length=4000)
-    client_request_id: str | None = Field(default=None, max_length=64)
+    client_request_id: str | None = Field(default=None, max_length=64, alias="clientRequestId")
+    mode: Literal["preview", "persist"] = "preview"
 
     @field_validator("content")
     @classmethod
@@ -55,5 +58,5 @@ class MessageCreateRequest(BaseModel):
 
 class MessagePairResponse(BaseModel):
     user_message: MessageRead
-    assistant_message: MessageRead
-    mode: Literal["preview"] = "preview"
+    assistant_message: MessageRead | None
+    mode: Literal["preview", "persist", "provider"] = "preview"

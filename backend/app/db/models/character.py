@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -7,11 +7,12 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 class Character(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "characters"
     __table_args__ = (
+        UniqueConstraint("slug", name="uq_characters_slug"),
         CheckConstraint("status IN ('draft', 'published', 'archived')", name="ck_characters_status"),
         CheckConstraint("default_language IN ('en', 'fa')", name="ck_characters_language"),
     )
 
-    slug: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
+    slug: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(120), index=True, nullable=False)
     tagline: Mapped[str] = mapped_column(String(180), default="", nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)

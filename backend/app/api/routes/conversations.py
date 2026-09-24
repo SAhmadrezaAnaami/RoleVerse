@@ -110,6 +110,7 @@ async def create_message(
             user.id,
             payload.content,
             payload.client_request_id,
+            include_preview=payload.mode == "preview",
         )
     except ConversationNotFoundError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.") from error
@@ -119,5 +120,10 @@ async def create_message(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     return MessagePairResponse(
         user_message=MessageRead.model_validate(pair.user_message),
-        assistant_message=MessageRead.model_validate(pair.assistant_message),
+        assistant_message=(
+            MessageRead.model_validate(pair.assistant_message)
+            if pair.assistant_message is not None
+            else None
+        ),
+        mode=payload.mode,
     )

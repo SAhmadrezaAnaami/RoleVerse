@@ -161,6 +161,17 @@
   box-shadow: var(--shadow-xs);
 }
 
+.message-bubble[data-status="streaming"] {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.message-bubble[data-status="failed"],
+.message-bubble[data-status="cancelled"] {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
 .message-user .message-bubble {
   border-color: transparent;
   border-radius: 18px 5px 18px 18px;
