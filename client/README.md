@@ -23,6 +23,6 @@ The current client uses deterministic sample characters and local replies. It in
 - English/Persian switching
 - Light/dark theme switching
 - Responsive mobile navigation
-- Development phone sign-in shell
+- Development phone OTP sign-in through `/api/v1/auth`
 
-Replace the local methods in `assets/js/api.js` with FastAPI calls as the backend milestones are implemented. Do not add a bundler or Node.js dependency unless the product requirements change.
+The sign-in flow uses an HttpOnly session cookie and never stores the OTP or session token in browser storage. Replace the remaining local reply methods in `assets/js/api.js` with persisted API calls as the backend milestones are implemented. Do not add a bundler or Node.js dependency unless the product requirements change.

@@ -113,6 +113,21 @@ The static client is mounted at `/` after the API routes so the same local serve
 - The default environment is development and must not be used for production secrets.
 - Provider calls will eventually use a bounded, model-aware history budget and idempotent request identifiers.
 
+## Current development auth section
+
+The first persisted vertical slice now includes:
+
+- `users` for phone identity, role, status, and language preference
+- `otp_challenges` for short-lived development verification codes
+- `auth_sessions` for opaque server-side session tokens
+- `/api/v1/auth/otp/request`, `/api/v1/auth/otp/verify`, `/api/v1/auth/me`, `/api/v1/auth/logout`, and `/api/v1/auth/logout-all`
+- Alembic migration `0001_data_auth`
+- HMAC-SHA-256 hashes for OTP codes and session tokens using a server-side pepper
+
+The role column is an initial development boundary. A normalized role/permission model and explicit god-user promotion workflow will be added with the administration section. The configured god phone is never accepted from the client and is normalized at startup.
+
+The development OTP sender writes only a masked phone and generated code to the server console. It is rejected when the service is configured for production until a real delivery adapter is supplied. Browser storage contains only theme and language preferences; sessions use an HttpOnly cookie.
+
 ## Security and privacy boundaries
 
 Phone numbers, chat content, provider credentials, and audit events are sensitive. The implementation roadmap includes session hashing, OTP expiry and replay protection, bans, rate limits, secret-safe errors, audit records, retention controls, and provider-key encryption before production deployment.

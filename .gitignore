@@ -18,4 +18,5 @@ node_modules/
 Thumbs.db
 .opencode/
 *_for_testing.md
+*.local.json
 llm_OpenAI_compatible_for_testing.md
