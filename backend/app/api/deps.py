@@ -4,7 +4,14 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_db
-from app.services import CharacterService, ConversationService, OtpService
+from app.providers import ProviderClient, get_provider
+from app.services import (
+    CharacterService,
+    ConversationService,
+    GenerationService,
+    InMemoryRateLimiter,
+    OtpService,
+)
 
 
 def get_otp_service(
@@ -20,6 +27,22 @@ def get_character_service(session: Session = Depends(get_db)) -> CharacterServic
 
 def get_conversation_service(session: Session = Depends(get_db)) -> ConversationService:
     return ConversationService(session)
+
+
+def get_provider_client(settings: Settings = Depends(get_settings)) -> ProviderClient:
+    return get_provider(settings)
+
+
+def get_generation_service(
+    session: Session = Depends(get_db),
+    provider: ProviderClient = Depends(get_provider_client),
+    settings: Settings = Depends(get_settings),
+) -> GenerationService:
+    return GenerationService(session, provider, settings)
+
+
+def get_rate_limiter(request: Request) -> InMemoryRateLimiter:
+    return request.app.state.rate_limiter
 
 
 def get_current_user(
