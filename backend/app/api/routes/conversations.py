@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_conversation_service, get_current_user
+from app.api.deps import get_conversation_service, get_current_user, require_safe_origin
 from app.db.models import User
 from app.schemas.characters import CharacterSummary
 from app.schemas.conversations import (
@@ -18,7 +18,11 @@ from app.services import (
     IdempotencyConflictError,
 )
 
-router = APIRouter(prefix="/conversations", tags=["conversations"])
+router = APIRouter(
+    prefix="/conversations",
+    tags=["conversations"],
+    dependencies=[Depends(require_safe_origin)],
+)
 
 
 def to_conversation_read(bundle, service: ConversationService) -> ConversationRead:

@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 
 from app.api.deps import get_provider_client
-from app.db.models import GenerationRun, Message
+from app.db.models import GenerationRun, Message, SystemSetting
 from app.providers.base import ProviderChunk, ProviderError, ProviderMessage, ProviderResult
 
 
@@ -11,6 +11,7 @@ class RecordingProvider:
 
     def __init__(self) -> None:
         self.calls = 0
+        self.last_max_output_tokens = None
 
     async def complete(
         self,
@@ -18,6 +19,7 @@ class RecordingProvider:
         max_output_tokens: int,
     ) -> ProviderResult:
         self.calls += 1
+        self.last_max_output_tokens = max_output_tokens
         return ProviderResult(content="complete", input_tokens=1, output_tokens=1)
 
     async def stream(
@@ -26,6 +28,7 @@ class RecordingProvider:
         max_output_tokens: int,
     ) -> AsyncIterator[ProviderChunk]:
         self.calls += 1
+        self.last_max_output_tokens = max_output_tokens
         yield ProviderChunk(delta="Hello")
         yield ProviderChunk(delta=" from the stream")
         yield ProviderChunk(
@@ -170,6 +173,28 @@ def test_non_streaming_generation_returns_message_pair(
         assert run.status == "complete"
         assert run.input_tokens == 1
         assert run.output_tokens == 1
+
+
+def test_generation_uses_persisted_max_output_setting(
+    application,
+    api_client,
+    otp_sender,
+    migrated_db,
+) -> None:
+    provider = RecordingProvider()
+    application.dependency_overrides[get_provider_client] = lambda: provider
+    session_factory, _ = migrated_db
+    with session_factory() as session:
+        setting = session.query(SystemSetting).filter_by(key="generation_max_output_tokens").one()
+        setting.value = 7
+        session.commit()
+    login(api_client, otp_sender)
+    turn = create_persisted_turn(api_client)
+    response = api_client.post(
+        f"/api/v1/conversations/{turn['conversation']['id']}/messages/{turn['message']['id']}/response",
+    )
+    assert response.status_code == 200
+    assert provider.last_max_output_tokens == 7
 
 
 def test_streaming_generation_failure_is_safe_and_persisted(

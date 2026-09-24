@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.api.deps import get_otp_service
 from app.core.config import Settings, get_settings
-from app.db.seed import seed_characters
+from app.db.seed import seed_admin_defaults, seed_characters
 from app.db.session import get_db
 from app.main import create_app
 from app.services import OtpService
@@ -87,6 +87,7 @@ def migrated_db(tmp_path):
     )
     with session_factory() as session:
         seed_characters(session)
+        seed_admin_defaults(session)
     yield session_factory, database_url
     engine.dispose()
 

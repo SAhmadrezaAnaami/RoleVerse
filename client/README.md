@@ -26,5 +26,7 @@ The current client uses deterministic sample characters and local replies. It in
 - Development phone OTP sign-in through `/api/v1/auth`
 - Public character discovery and API-backed owner conversations
 - Persisted localized greetings and ordered preview messages
+- Mock-first provider streaming with cancellation and persisted generation state
+- Authorized administration workspace at `/admin.html` or `/admin/`
 
-The sign-in flow uses an HttpOnly session cookie and never stores the OTP or session token in browser storage. The current assistant response is a deterministic development preview; the provider streaming adapter will replace it in a later section. Do not add a bundler or Node.js dependency unless the product requirements change.
+The sign-in flow uses an HttpOnly session cookie and never stores the OTP, session token, provider secret, or admin response data in browser storage. The administration workspace shares the existing theme and language preferences, supports RTL/LTR, and renders provider data as safe text. Do not add a bundler or Node.js dependency unless the product requirements change.

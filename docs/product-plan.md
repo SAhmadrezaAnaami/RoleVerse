@@ -56,7 +56,7 @@ RoleVerse is a bilingual role-play chat platform where people can create relatio
 
 ## Current vertical slice
 
-The current usable slice now includes a persistent character catalog, owner-scoped conversations, persisted localized greetings, ordered preview messages, and a mock-first provider generation boundary. Authenticated clients can persist a user turn, stream a normalized assistant response, cancel an active run, and restore the completed conversation after reload. Live OpenAI-compatible calls are disabled by default and require explicit server configuration.
+The current usable slice now includes a persistent character catalog, owner-scoped conversations, persisted localized greetings, ordered preview messages, and a mock-first provider generation boundary. Authenticated clients can persist a user turn, stream a normalized assistant response, cancel an active run, and restore the completed conversation after reload. Authorized administrators can use the separate control plane to review users, bans, safe provider/model metadata, usage and cost, settings, rate limits, and audit events. Live OpenAI-compatible calls and live provider activation remain disabled by default.
 
 ## Non-goals for the first slice
 
@@ -65,6 +65,7 @@ The current usable slice now includes a persistent character catalog, owner-scop
 - Production-grade live OpenAI-compatible operations and provider administration
 - Full marketplace publishing workflow
 - Production-grade moderation and abuse prevention
+- Encrypted provider secret management, distributed rate limiting, and live provider activation
 
 ## Acceptance criteria
 

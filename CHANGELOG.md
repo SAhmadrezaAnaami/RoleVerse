@@ -28,6 +28,10 @@ All notable changes to RoleVerse are documented in this file.
 - Generation usage and integer micro-cost snapshots, finish reasons, and owner-scoped status/cancel routes.
 - Client SSE parsing, streaming message states, cancellation, and authenticated conversation recovery.
 - In-memory global and per-user generation rate-limit primitives.
+- Server-authorized administration APIs for masked users, bans, role elevation, provider/model metadata, usage, settings, and audit events.
+- Separate responsive bilingual admin workspace at `/admin.html` and `/admin/` with safe provider metadata and no secret inputs.
+- Ban operations revoke existing sessions and cancel active generations transactionally.
+- Persisted generation rate-limit and maximum-output settings are read by the generation route.
 
 ### Changed
 
@@ -39,4 +43,5 @@ All notable changes to RoleVerse are documented in this file.
 - Sessions currently use a development role column; normalized permissions and god-user promotion workflows are deferred.
 - Anonymous client conversations still use deterministic local preview data.
 - Live provider calls, durable resumable event replay, and production provider administration require explicit operational configuration and are not enabled by default.
-- The admin panel and marketplace publishing workflow are not implemented yet.
+- The admin control plane is metadata-only; encrypted server-side provider secret management, live provider activation, distributed quotas, and full session-bound CSRF hardening are deferred.
+- The marketplace publishing workflow is not implemented yet.

@@ -605,6 +605,10 @@
       return;
     }
     state.currentUser = user;
+    const adminLink = select('#admin-link');
+    if (adminLink) {
+      adminLink.hidden = user.role !== 'admin';
+    }
     const displayName = user.display_name || 'RoleVerse member';
     select('.profile-copy strong').textContent = displayName;
     const initials = displayName
@@ -632,7 +636,7 @@
         const phone = select('#phone-input').value.trim();
         const result = await api.requestOtp(phone);
         if (!result.ok) {
-          setAuthError(result.status === 429 ? result.data?.detail || getTranslation('authError') : getTranslation('authUnavailable'));
+          setAuthError(result.status === 429 ? getTranslation('authError') : getTranslation('authUnavailable'));
           return;
         }
         state.authPhone = phone;
@@ -643,7 +647,7 @@
       const code = select('#otp-input').value.trim();
       const result = await api.verifyOtp(state.authPhone, code);
       if (!result.ok) {
-        setAuthError(result.status === 429 ? result.data?.detail || getTranslation('authError') : getTranslation('authError'));
+        setAuthError(result.status === 429 ? getTranslation('authError') : getTranslation('authError'));
         return;
       }
       updateUserProfile(result.data?.user);

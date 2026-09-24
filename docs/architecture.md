@@ -165,5 +165,12 @@ POST /api/v1/conversations/{conversation_id}/generations/{run_id}/cancel
 
 The in-memory limiter is a development primitive for global and per-user generation quotas. A distributed limiter and durable event replay belong in the operations layer before production scale-out.
 
+## Current administration and operations section
+
+The admin control plane is a separate static surface at `/admin.html` and `/admin/`, while authorization remains server-side. `get_admin_user` requires an active administrator session. Role changes require the configured god user. Ban and unban commands revoke sessions, cancel active generations for the target, and write an audit event in the same transaction.
+
+Admin API routes are under `/api/v1/admin` and return masked user phone numbers. Provider and model records are safe metadata only: no API key, authorization header, fixture path, prompt, or message content is stored or returned. Provider records do not activate the runtime registry; the existing environment/fixture provider boundary remains authoritative.
+
+The admin workspace exposes overview metrics, users and access, provider/model metadata, usage and estimated provider cost, typed settings, rate-limit values, and an append-only audit feed. Admin responses use `no-store`, and unsafe admin mutations require an allowed same-origin request. The current limiter remains process-local; distributed quotas, encrypted secret management, provider health probes, and full CSRF/session-epoch hardening are deferred operational work.
 
 Phone numbers, chat content, provider credentials, and audit events are sensitive. The implementation roadmap includes session hashing, OTP expiry and replay protection, bans, rate limits, secret-safe errors, audit records, retention controls, and provider-key encryption before production deployment.

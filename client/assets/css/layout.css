@@ -176,6 +176,10 @@
   cursor: pointer;
 }
 
+.admin-link {
+  text-decoration: none;
+}
+
 .nav-item {
   position: relative;
   display: flex;
