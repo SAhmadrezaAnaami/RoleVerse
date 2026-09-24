@@ -38,6 +38,7 @@
     remoteConversations: new Map(),
     remoteMessages: new Map(),
     remoteCharacters: new Map(),
+    activeStream: null,
   };
   const replies = {
     luna: 'Then let’s make tonight a little more impossible. I’ll bring the stars; you bring the question.',
@@ -88,6 +89,7 @@
     time: formatServerTime(message.created_at),
     id: message.id,
     position: message.position,
+    status: message.status || 'complete',
   });
 
   const createRequestId = () => {
@@ -333,6 +335,9 @@
     const favoriteButton = select('[data-action="favorite"]');
     favoriteButton.classList.toggle('is-favorite', state.favorites.has(character.id));
     favoriteButton.setAttribute('aria-pressed', state.favorites.has(character.id) ? 'true' : 'false');
+    const sendButton = select('#send-message');
+    const streamIsActive = state.activeStream?.characterId === character.id;
+    sendButton.setAttribute('aria-label', streamIsActive ? getTranslation('stopGeneration') : getTranslation('sendMessage'));
     renderConversationList();
   }
 
@@ -371,8 +376,9 @@
 
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble';
+      bubble.dataset.status = message.status || 'complete';
       bubble.setAttribute('dir', 'auto');
-      bubble.textContent = message.content;
+      bubble.textContent = message.content || (message.status === 'streaming' ? '…' : '');
       body.append(meta, bubble);
       article.append(body);
 
@@ -427,10 +433,13 @@
     if (!characterById.has(characterId)) {
       return;
     }
+    const character = getCharacter(characterId);
     state.activeCharacterId = characterId;
     updateActiveCharacter();
     renderMessages();
-    void loadRemoteMessages(character);
+    if (state.activeStream?.characterId !== characterId) {
+      void loadRemoteMessages(character);
+    }
     setView('chat');
     if (window.location.hash !== '#/chat') {
       window.history.replaceState(null, '', '#/chat');
@@ -663,8 +672,115 @@
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
   }
 
+  function setResponding(active, characterId = state.activeCharacterId) {
+    state.isResponding = active;
+    const typing = select('#typing-indicator');
+    const messageList = select('#message-list');
+    const sendButton = select('#send-message');
+    const isCurrentCharacter = state.activeCharacterId === characterId;
+    messageList.setAttribute('aria-busy', active && isCurrentCharacter ? 'true' : 'false');
+    typing.classList.toggle('is-visible', active && isCurrentCharacter);
+    typing.setAttribute('aria-hidden', active && isCurrentCharacter ? 'false' : 'true');
+    sendButton.disabled = false;
+    sendButton.setAttribute('aria-label', active && isCurrentCharacter ? getTranslation('stopGeneration') : getTranslation('sendMessage'));
+  }
+
+  function setTypingVisible(visible) {
+    const typing = select('#typing-indicator');
+    typing.classList.toggle('is-visible', visible && state.activeCharacterId === state.activeStream?.characterId);
+    typing.setAttribute('aria-hidden', visible && state.activeCharacterId === state.activeStream?.characterId ? 'false' : 'true');
+  }
+
+  function replaceMessage(messages, nextMessage) {
+    const index = messages.findIndex((message) => nextMessage.id && message.id === nextMessage.id);
+    if (index === -1) {
+      messages.push(nextMessage);
+    } else {
+      messages[index] = nextMessage;
+    }
+  }
+
+  async function streamRemoteTurn(character, conversation, userMessage) {
+    const controller = new AbortController();
+    const stream = {
+      controller,
+      conversationId: conversation.id,
+      characterId: character.id,
+      runId: null,
+      userMessageId: userMessage.id,
+    };
+    const provisional = {
+      role: 'assistant',
+      content: '',
+      time: getLocalTime(),
+      status: 'streaming',
+      id: null,
+    };
+    const messages = state.messagesByCharacter[character.id];
+    messages.push(provisional);
+    state.activeStream = stream;
+    let streamError = null;
+    setResponding(true, character.id);
+    try {
+      const result = await api.streamMessage(conversation.id, userMessage.id, {
+        signal: controller.signal,
+        onEvent: async (eventName, data) => {
+          if (eventName === 'start') {
+            stream.runId = data.run_id;
+            provisional.id = data.assistant_message_id;
+            if (data.user_message) {
+              replaceMessage(messages, normalizeApiMessage(data.user_message));
+            }
+          } else if (eventName === 'delta') {
+            provisional.content += data.text || '';
+            setTypingVisible(false);
+            if (state.activeCharacterId === character.id) {
+              renderMessages();
+            }
+          } else if (eventName === 'done') {
+            if (data.user_message) {
+              replaceMessage(messages, normalizeApiMessage(data.user_message));
+            }
+            if (data.assistant_message) {
+              replaceMessage(messages, normalizeApiMessage(data.assistant_message));
+            }
+          } else if (eventName === 'error') {
+            streamError = data;
+          }
+        },
+      });
+      if (streamError) {
+        provisional.status = 'failed';
+        provisional.content = provisional.content || getTranslation('generationUnavailable');
+        showToast(getTranslation('generationUnavailable'));
+      } else if (result.error?.name === 'AbortError') {
+        provisional.status = 'cancelled';
+        if (stream.runId) {
+          await api.cancelGeneration(conversation.id, stream.runId);
+        }
+        showToast(getTranslation('generationCancelled'));
+      } else if (!result.ok) {
+        provisional.status = 'failed';
+        provisional.content = provisional.content || getTranslation('generationUnavailable');
+        showToast(getTranslation('generationUnavailable'));
+      } else if (provisional.status === 'streaming') {
+        provisional.status = 'complete';
+      }
+      if (state.activeCharacterId === character.id) {
+        renderMessages();
+      }
+    } finally {
+      if (state.activeStream === stream) {
+        state.activeStream = null;
+        setResponding(false, character.id);
+      }
+    }
+    return streamError;
+  }
+
   async function sendMessage() {
     if (state.isResponding) {
+      state.activeStream?.controller.abort();
       return;
     }
     const input = select('#message-input');
@@ -678,23 +794,18 @@
       return;
     }
     const character = getCharacter(state.activeCharacterId);
-    const messageList = select('#message-list');
-    const typing = select('#typing-indicator');
-    const sendButton = select('#send-message');
-    state.isResponding = true;
-    messageList.setAttribute('aria-busy', 'true');
-    typing.classList.add('is-visible');
-    typing.setAttribute('aria-hidden', 'false');
-    sendButton.disabled = true;
-    try {
-      if (state.currentUser) {
+    if (state.currentUser) {
+      setResponding(true, character.id);
+      try {
         const conversation = await ensureRemoteConversation(character);
         if (!conversation) {
           return;
         }
+        const requestId = createRequestId();
         const result = await api.sendMessage(conversation.id, {
           content,
-          clientRequestId: createRequestId(),
+          clientRequestId: requestId,
+          mode: 'persist',
         });
         if (!result.ok) {
           if (result.status === 401) {
@@ -703,16 +814,23 @@
           showToast(getTranslation('authUnavailable'));
           return;
         }
-        state.messagesByCharacter[character.id].push(
-          normalizeApiMessage(result.data.user_message),
-          normalizeApiMessage(result.data.assistant_message),
-        );
-        renderMessages();
+        const userMessage = normalizeApiMessage(result.data.user_message);
+        state.messagesByCharacter[character.id].push(userMessage);
         input.value = '';
         resetComposer();
-        showToast(getTranslation('responseReady'));
-        return;
+        if (state.activeCharacterId === character.id) {
+          renderMessages();
+        }
+        await streamRemoteTurn(character, conversation, userMessage);
+      } finally {
+        if (!state.activeStream) {
+          setResponding(false, character.id);
+        }
       }
+      return;
+    }
+    setResponding(true, character.id);
+    try {
       state.rateLimitRemaining -= 1;
       appendMessage('user', content);
       input.value = '';
@@ -721,13 +839,12 @@
       window.setTimeout(() => {
         appendMessage('assistant', replies[character.id] || replies.luna);
         showToast(getTranslation('responseReady'));
+        setResponding(false, character.id);
       }, 900);
     } finally {
-      typing.classList.remove('is-visible');
-      typing.setAttribute('aria-hidden', 'true');
-      messageList.setAttribute('aria-busy', 'false');
-      sendButton.disabled = false;
-      state.isResponding = false;
+      if (!state.activeStream) {
+        setResponding(false, character.id);
+      }
     }
   }
 
