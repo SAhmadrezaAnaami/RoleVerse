@@ -6,6 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
+from app.providers.base import ProviderError
+from app.services.rate_limit import InMemoryRateLimiter
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -19,6 +21,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None if settings.environment.lower() == "production" else "/openapi.json",
     )
     application.state.settings = settings
+    application.state.rate_limiter = InMemoryRateLimiter()
 
     @application.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, error: RequestValidationError) -> JSONResponse:
@@ -37,6 +40,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ):
             headers = {"Cache-Control": "no-store", "Pragma": "no-cache"}
         return JSONResponse(status_code=422, content={"detail": details}, headers=headers)
+
+    @application.exception_handler(ProviderError)
+    async def provider_exception_handler(request: Request, error: ProviderError) -> JSONResponse:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Generation service unavailable."},
+            headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+        )
 
     @application.middleware("http")
     async def add_security_headers(request, call_next):
