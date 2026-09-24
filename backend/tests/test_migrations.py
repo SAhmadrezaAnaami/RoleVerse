@@ -16,7 +16,14 @@ def test_initial_migration_round_trip(tmp_path) -> None:
     upgrade(config, "head")
     engine = create_engine(database_url)
     table_names = set(inspect(engine).get_table_names())
-    assert {"users", "otp_challenges", "auth_sessions"}.issubset(table_names)
+    assert {
+        "users",
+        "otp_challenges",
+        "auth_sessions",
+        "characters",
+        "conversations",
+        "messages",
+    }.issubset(table_names)
     engine.dispose()
 
     downgrade(config, "base")
