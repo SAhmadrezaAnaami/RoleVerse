@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import sessionmaker
 
-from app.api.deps import get_current_user, get_generation_service, get_rate_limiter
+from app.api.deps import (
+    get_current_user,
+    get_generation_service,
+    get_rate_limiter,
+    require_safe_origin,
+)
 from app.db.models import User
 from app.providers.base import ProviderError
 from app.schemas.conversations import MessagePairResponse, MessageRead
@@ -16,11 +21,17 @@ from app.services import (
     GenerationInputError,
     GenerationNotFoundError,
     GenerationService,
+    GenerationPolicy,
     InMemoryRateLimiter,
+    RuntimeSettingsService,
 )
 from app.services.generation_service import GenerationContext
 
-router = APIRouter(prefix="/conversations", tags=["generations"])
+router = APIRouter(
+    prefix="/conversations",
+    tags=["generations"],
+    dependencies=[Depends(require_safe_origin)],
+)
 
 
 def sse_event(event: str, data: dict) -> str:
@@ -44,18 +55,23 @@ def enforce_rate_limit(
     user: User,
     service: GenerationService,
     limiter: InMemoryRateLimiter,
-) -> None:
-    settings = service.settings
-    window = settings.generation_rate_limit_window_seconds
+) -> GenerationPolicy:
+    runtime_settings = RuntimeSettingsService(service.session, service.settings)
+    if runtime_settings.maintenance_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Generation is temporarily paused for maintenance.",
+        )
+    policy = runtime_settings.generation_policy()
     user_decision = limiter.check(
         f"generation:user:{user.id}",
-        settings.generation_rate_limit_per_user,
-        window,
+        policy.per_user_limit,
+        policy.window_seconds,
     )
     global_decision = limiter.check(
         "generation:global",
-        settings.generation_rate_limit_global,
-        window,
+        policy.global_limit,
+        policy.window_seconds,
     )
     decision = user_decision if not user_decision.allowed else global_decision
     if not decision.allowed:
@@ -64,6 +80,7 @@ def enforce_rate_limit(
             detail="Generation rate limit reached.",
             headers={"Retry-After": str(decision.retry_after_seconds)},
         )
+    return policy
 
 
 def generation_status(context: GenerationContext) -> GenerationStatusRead:
@@ -117,7 +134,7 @@ async def generate_response(
     service: GenerationService = Depends(get_generation_service),
     limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
 ) -> MessagePairResponse:
-    enforce_rate_limit(user, service, limiter)
+    policy = enforce_rate_limit(user, service, limiter)
     try:
         context = service.prepare(conversation_id, user.id, message_id)
     except GenerationNotFoundError as error:
@@ -140,7 +157,7 @@ async def generate_response(
     try:
         result = await service.provider.complete(
             context.provider_messages,
-            service.settings.provider_max_output_tokens,
+            policy.max_output_tokens,
         )
     except ProviderError as error:
         service.fail(context)
@@ -171,7 +188,7 @@ async def stream_response(
     service: GenerationService = Depends(get_generation_service),
     limiter: InMemoryRateLimiter = Depends(get_rate_limiter),
 ) -> StreamingResponse:
-    enforce_rate_limit(user, service, limiter)
+    policy = enforce_rate_limit(user, service, limiter)
     try:
         context = service.prepare(conversation_id, user.id, message_id)
     except GenerationNotFoundError as error:
@@ -237,7 +254,7 @@ async def stream_response(
             )
             async for chunk in stream_service.provider.stream(
                 stream_context.provider_messages,
-                settings.provider_max_output_tokens,
+                policy.max_output_tokens,
             ):
                 if chunk.delta:
                     partial_content.append(chunk.delta)
