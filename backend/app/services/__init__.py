@@ -5,6 +5,13 @@ from app.services.conversation_service import (
     ConversationService,
     IdempotencyConflictError,
 )
+from app.services.generation_service import (
+    GenerationConflictError,
+    GenerationInputError,
+    GenerationNotFoundError,
+    GenerationService,
+)
+from app.services.rate_limit import InMemoryRateLimiter, RateLimitDecision
 from app.services.otp_service import (
     AccountBlockedError,
     InvalidOtpError,
@@ -22,9 +29,15 @@ __all__ = [
     "ConversationNotFoundError",
     "ConversationService",
     "IdempotencyConflictError",
+    "GenerationConflictError",
+    "GenerationInputError",
+    "GenerationNotFoundError",
+    "GenerationService",
+    "InMemoryRateLimiter",
     "InvalidOtpError",
     "IssuedSession",
     "OtpCooldownError",
     "OtpService",
     "OtpServiceError",
+    "RateLimitDecision",
 ]
