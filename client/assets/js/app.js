@@ -35,6 +35,9 @@
     authStep: 'phone',
     authPhone: '',
     currentUser: null,
+    remoteConversations: new Map(),
+    remoteMessages: new Map(),
+    remoteCharacters: new Map(),
   };
   const replies = {
     luna: 'Then let’s make tonight a little more impossible. I’ll bring the stars; you bring the question.',
@@ -48,6 +51,15 @@
   const select = (selector, parent = document) => parent.querySelector(selector);
   const selectAll = (selector, parent = document) => Array.from(parent.querySelectorAll(selector));
   const getCharacter = (id) => characterById.get(id) || data.characters[0];
+  const characterSlugs = {
+    luna: 'luna-vale',
+    rowan: 'rowan-vale',
+    mira: 'mira-sol',
+    orion: 'orion-ash',
+    sage: 'sage-nox',
+    nova: 'nova-wren',
+  };
+  const getCharacterSlug = (character) => character.slug || characterSlugs[character.id] || character.id;
   const getTranslation = (key) => i18n[state.locale]?.[key] || i18n.en[key] || key;
   const isPersian = () => state.locale === 'fa';
   const getLocalTime = () =>
@@ -55,6 +67,86 @@
       hour: 'numeric',
       minute: '2-digit',
     }).format(new Date());
+
+  const formatServerTime = (value) => {
+    if (!value) {
+      return getLocalTime();
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return getLocalTime();
+    }
+    return new Intl.DateTimeFormat(isPersian() ? 'fa-IR' : 'en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
+  };
+
+  const normalizeApiMessage = (message) => ({
+    role: message.role,
+    content: message.content,
+    time: formatServerTime(message.created_at),
+    id: message.id,
+    position: message.position,
+  });
+
+  const createRequestId = () => {
+    if (window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return `request-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  async function loadRemoteCharacters(locale = state.locale) {
+    const result = await api.getCharacters({ locale });
+    if (!result.ok) {
+      return;
+    }
+    const avatarClasses = ['avatar-luna', 'avatar-rowan', 'avatar-mira', 'avatar-orion', 'avatar-sage'];
+    result.data.forEach((remote, index) => {
+      const existing = data.characters.find((character) => getCharacterSlug(character) === remote.slug);
+      const localizedName = remote.name;
+      const localizedTagline = remote.tagline;
+      const normalized = {
+        ...(existing || {}),
+        id: existing?.id || remote.id,
+        slug: remote.slug,
+        name: locale === 'fa' ? existing?.name || localizedName : localizedName,
+        nameFa: locale === 'fa' ? localizedName : existing?.nameFa || localizedName,
+        role: locale === 'fa' ? existing?.role || localizedTagline : localizedTagline,
+        roleFa: locale === 'fa' ? localizedTagline : existing?.roleFa || localizedTagline,
+        description: remote.description,
+        descriptionFa: locale === 'fa' ? remote.description : existing?.descriptionFa || remote.description,
+        category: remote.category,
+        categoryFa: locale === 'fa' ? remote.category : existing?.categoryFa || remote.category,
+        tags: remote.tags,
+        tagsFa: locale === 'fa' ? remote.tags : existing?.tagsFa || remote.tags,
+        accentStart: remote.accent_start,
+        accentEnd: remote.accent_end,
+        gradientStart: remote.accent_start,
+        gradientEnd: remote.accent_end,
+        greeting: remote.greeting || existing?.greeting || '',
+        greetingFa: locale === 'fa' ? remote.greeting : existing?.greetingFa || remote.greeting,
+        avatar: existing?.avatar || localizedName.slice(0, 2).toUpperCase(),
+        avatarClass: existing?.avatarClass || avatarClasses[index % avatarClasses.length],
+      };
+      if (existing) {
+        Object.assign(existing, normalized);
+        characterById.set(existing.id, existing);
+      } else {
+        data.characters.push(normalized);
+        characterById.set(normalized.id, normalized);
+        state.messagesByCharacter[normalized.id] = [
+          { role: 'assistant', content: normalized.greeting, time: getLocalTime() },
+        ];
+      }
+      state.remoteCharacters.set(remote.slug, normalized);
+    });
+    renderConversationList();
+    renderGrids();
+    updateActiveCharacter();
+    renderMessages();
+  }
 
   function applyTranslations() {
     root.lang = state.locale;
@@ -95,6 +187,7 @@
     renderGrids();
     updateActiveCharacter();
     renderMessages();
+    void loadRemoteCharacters(locale);
     if (announce) {
       showToast(getTranslation('languageChanged'));
     }
@@ -105,6 +198,7 @@
     list.replaceChildren();
     data.conversations.forEach((conversation) => {
       const character = getCharacter(conversation.characterId);
+      const remoteConversation = state.remoteConversations.get(conversation.characterId);
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `conversation-item${conversation.characterId === state.activeCharacterId ? ' is-active' : ''}`;
@@ -121,11 +215,15 @@
       const name = document.createElement('strong');
       name.textContent = isPersian() ? character.nameFa : character.name;
       const preview = document.createElement('span');
-      preview.textContent = isPersian() ? conversation.previewFa : conversation.preview;
+      preview.textContent = remoteConversation
+        ? remoteConversation.last_message_preview || remoteConversation.title
+        : isPersian() ? conversation.previewFa : conversation.preview;
       copy.append(name, preview);
 
       const time = document.createElement('time');
-      time.textContent = isPersian() ? conversation.timeFa : conversation.time;
+      time.textContent = remoteConversation
+        ? formatServerTime(remoteConversation.updated_at)
+        : isPersian() ? conversation.timeFa : conversation.time;
 
       button.append(avatar, copy, time);
       button.addEventListener('click', () => selectCharacter(conversation.characterId));
@@ -332,6 +430,7 @@
     state.activeCharacterId = characterId;
     updateActiveCharacter();
     renderMessages();
+    void loadRemoteMessages(character);
     setView('chat');
     if (window.location.hash !== '#/chat') {
       window.history.replaceState(null, '', '#/chat');
@@ -348,6 +447,82 @@
     }
     updateActiveCharacter();
     renderGrids();
+  }
+
+  async function loadRemoteConversations() {
+    if (!state.currentUser) {
+      return;
+    }
+    const result = await api.getConversations();
+    if (!result.ok) {
+      if (result.status === 401) {
+        state.currentUser = null;
+      }
+      return;
+    }
+    state.remoteConversations.clear();
+    result.data.forEach((conversation) => {
+      const character = data.characters.find(
+        (item) => getCharacterSlug(item) === conversation.character.slug,
+      );
+      if (character) {
+        state.remoteConversations.set(character.id, conversation);
+        if (!data.conversations.some((item) => item.characterId === character.id)) {
+          data.conversations.push({
+            id: conversation.id,
+            characterId: character.id,
+            preview: '',
+            previewFa: '',
+            time: conversation.updated_at,
+            timeFa: conversation.updated_at,
+          });
+        }
+      }
+    });
+    renderConversationList();
+  }
+
+  async function loadRemoteMessages(character) {
+    const conversation = state.remoteConversations.get(character.id);
+    if (!conversation) {
+      return false;
+    }
+    const result = await api.getMessages(conversation.id);
+    if (!result.ok) {
+      if (result.status === 401) {
+        state.currentUser = null;
+      }
+      return false;
+    }
+    state.remoteMessages.set(conversation.id, result.data);
+    state.messagesByCharacter[character.id] = result.data.map(normalizeApiMessage);
+    renderMessages();
+    return true;
+  }
+
+  async function ensureRemoteConversation(character) {
+    if (!state.currentUser) {
+      return null;
+    }
+    let conversation = state.remoteConversations.get(character.id);
+    if (!conversation) {
+      const result = await api.createConversation({
+        characterSlug: getCharacterSlug(character),
+        locale: state.locale,
+      });
+      if (!result.ok) {
+        if (result.status === 401) {
+          state.currentUser = null;
+        }
+        showToast(getTranslation('authUnavailable'));
+        return null;
+      }
+      conversation = result.data;
+      state.remoteConversations.set(character.id, conversation);
+      renderConversationList();
+    }
+    await loadRemoteMessages(character);
+    return conversation;
   }
 
   function showToast(message) {
@@ -463,6 +638,8 @@
         return;
       }
       updateUserProfile(result.data?.user);
+      await loadRemoteConversations();
+      await ensureRemoteConversation(getCharacter(state.activeCharacterId));
       closeAuthDialog();
       showToast(getTranslation('loginSuccess'));
     } finally {
@@ -486,7 +663,7 @@
     input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     if (state.isResponding) {
       return;
     }
@@ -496,33 +673,62 @@
       input.focus();
       return;
     }
-    if (state.rateLimitRemaining <= 0) {
+    if (!state.currentUser && state.rateLimitRemaining <= 0) {
       showToast(getTranslation('messageLimit'));
       return;
     }
-    state.rateLimitRemaining -= 1;
-    appendMessage('user', content);
-    input.value = '';
-    resetComposer();
-    showToast(getTranslation('messageSent'));
-    state.isResponding = true;
+    const character = getCharacter(state.activeCharacterId);
     const messageList = select('#message-list');
     const typing = select('#typing-indicator');
     const sendButton = select('#send-message');
+    state.isResponding = true;
     messageList.setAttribute('aria-busy', 'true');
     typing.classList.add('is-visible');
     typing.setAttribute('aria-hidden', 'false');
     sendButton.disabled = true;
-    const character = getCharacter(state.activeCharacterId);
-    window.setTimeout(() => {
-      appendMessage('assistant', replies[character.id] || replies.luna);
+    try {
+      if (state.currentUser) {
+        const conversation = await ensureRemoteConversation(character);
+        if (!conversation) {
+          return;
+        }
+        const result = await api.sendMessage(conversation.id, {
+          content,
+          clientRequestId: createRequestId(),
+        });
+        if (!result.ok) {
+          if (result.status === 401) {
+            state.currentUser = null;
+          }
+          showToast(getTranslation('authUnavailable'));
+          return;
+        }
+        state.messagesByCharacter[character.id].push(
+          normalizeApiMessage(result.data.user_message),
+          normalizeApiMessage(result.data.assistant_message),
+        );
+        renderMessages();
+        input.value = '';
+        resetComposer();
+        showToast(getTranslation('responseReady'));
+        return;
+      }
+      state.rateLimitRemaining -= 1;
+      appendMessage('user', content);
+      input.value = '';
+      resetComposer();
+      showToast(getTranslation('messageSent'));
+      window.setTimeout(() => {
+        appendMessage('assistant', replies[character.id] || replies.luna);
+        showToast(getTranslation('responseReady'));
+      }, 900);
+    } finally {
       typing.classList.remove('is-visible');
       typing.setAttribute('aria-hidden', 'true');
       messageList.setAttribute('aria-busy', 'false');
       sendButton.disabled = false;
       state.isResponding = false;
-      showToast(getTranslation('responseReady'));
-    }, 900);
+    }
   }
 
   function updateHealth(health) {
@@ -557,12 +763,12 @@
     select('#message-input').addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
-        sendMessage();
+        void sendMessage();
       }
     });
     select('#composer').addEventListener('submit', (event) => {
       event.preventDefault();
-      sendMessage();
+      void sendMessage();
     });
     select('#character-search').addEventListener('input', renderGrids);
     select('#auth-form').addEventListener('submit', submitAuth);
@@ -582,12 +788,21 @@
         closeAuthDialog();
       } else if (action === 'new-chat') {
         const character = getCharacter(state.activeCharacterId);
-        state.messagesByCharacter[character.id] = [
-          { role: 'assistant', content: isPersian() ? character.greetingFa : character.greeting, time: getLocalTime() },
-        ];
-        renderMessages();
-        setView('chat');
-        showToast(getTranslation('newChatCreated'));
+        if (state.currentUser) {
+          void ensureRemoteConversation(character).then((conversation) => {
+            if (conversation) {
+              setView('chat');
+              showToast(getTranslation('newChatCreated'));
+            }
+          });
+        } else {
+          state.messagesByCharacter[character.id] = [
+            { role: 'assistant', content: isPersian() ? character.greetingFa : character.greeting, time: getLocalTime() },
+          ];
+          renderMessages();
+          setView('chat');
+          showToast(getTranslation('newChatCreated'));
+        }
       } else if (action === 'favorite') {
         toggleFavorite(state.activeCharacterId);
       } else if (action === 'more') {
@@ -629,10 +844,13 @@
     const route = window.location.hash.replace(/^#\/?/, '').split('?')[0] || 'chat';
     setView(route);
     bindEvents();
+    void loadRemoteCharacters(state.locale);
     api.getHealth().then(updateHealth);
-    api.getMe().then((result) => {
+    api.getMe().then(async (result) => {
       if (result.ok) {
         updateUserProfile(result.data);
+        await loadRemoteConversations();
+        await loadRemoteMessages(getCharacter(state.activeCharacterId));
       }
     });
   }
