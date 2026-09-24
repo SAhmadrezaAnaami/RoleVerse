@@ -1,0 +1,25 @@
+[project]
+name = "roleverse-backend"
+version = "0.1.0"
+description = "RoleVerse FastAPI backend"
+requires-python = ">=3.10"
+dependencies = [
+    "alembic>=1.13,<2",
+    "fastapi>=0.115,<1",
+    "openai>=1.50,<2",
+    "pydantic-settings>=2.6,<3",
+    "python-multipart>=0.0.9,<1",
+    "sqlalchemy>=2.0,<3",
+    "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27,<1",
+    "pytest>=8,<9",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
