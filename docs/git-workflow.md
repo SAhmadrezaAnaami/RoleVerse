@@ -33,4 +33,4 @@ RoleVerse uses protected integration branches and small section branches.
 8. Promote the tested commit through the protected `main` workflow.
 9. Add a branch note, changelog entry, and release tag when appropriate.
 
-The current first section is `section/00-foundation`.
+The current active section is `section/03-provider-streaming`. It must pass backend, migration, JavaScript syntax, and browser smoke checks before integration.
