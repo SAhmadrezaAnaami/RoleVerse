@@ -11,6 +11,7 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint("conversation_id", "position", name="uq_messages_position"),
         CheckConstraint("role IN ('user', 'assistant', 'system')", name="ck_messages_role"),
         CheckConstraint("status IN ('queued', 'streaming', 'complete', 'failed', 'cancelled', 'deleted')", name="ck_messages_status"),
+        CheckConstraint("source IN ('user', 'greeting', 'preview', 'generation', 'system')", name="ck_messages_source"),
         CheckConstraint("position >= 1", name="ck_messages_position"),
     )
 
@@ -21,6 +22,7 @@ class Message(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     role: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), default="user", nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="complete", index=True, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
