@@ -76,6 +76,26 @@ def test_message_send_is_ordered_and_idempotent(api_client, otp_sender) -> None:
     assert [message["position"] for message in messages] == [1, 2, 3]
 
 
+def test_persist_message_retry_does_not_duplicate_user_turn(api_client, otp_sender) -> None:
+    login(api_client, otp_sender, "+15551234567")
+    conversation = create_conversation(api_client)
+    path = f"/api/v1/conversations/{conversation['id']}/messages"
+    payload = {
+        "content": "A turn waiting for its response.",
+        "client_request_id": "persist-request-001",
+        "mode": "persist",
+    }
+
+    first = api_client.post(path, json=payload)
+    retry = api_client.post(path, json=payload)
+
+    assert first.status_code == 201
+    assert first.json()["assistant_message"] is None
+    assert retry.status_code == 201
+    assert retry.json()["user_message"]["id"] == first.json()["user_message"]["id"]
+    assert len(api_client.get(path).json()) == 2
+
+
 def test_conversation_routes_require_authentication(application) -> None:
     with TestClient(application, base_url="https://testserver") as client:
         assert client.get("/api/v1/conversations").status_code == 401
