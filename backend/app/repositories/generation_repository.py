@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import GenerationRun
@@ -52,11 +52,30 @@ class GenerationRepository:
         session.flush()
         return run
 
-    def mark_streaming(self, run: GenerationRun) -> None:
-        run.status = "streaming"
+    def mark_streaming(
+        self,
+        session: Session,
+        run: GenerationRun,
+        updated_at: datetime,
+    ) -> bool:
+        statement = (
+            update(GenerationRun)
+            .where(
+                GenerationRun.id == run.id,
+                GenerationRun.status == "queued",
+            )
+            .values(status="streaming", updated_at=updated_at)
+            .execution_options(synchronize_session=False)
+        )
+        updated = session.execute(statement).rowcount == 1
+        if updated:
+            run.status = "streaming"
+            run.updated_at = updated_at
+        return updated
 
     def complete(
         self,
+        session: Session,
         run: GenerationRun,
         input_tokens: int,
         output_tokens: int,
@@ -67,28 +86,94 @@ class GenerationRepository:
         output_cost_micro: int,
         total_cost_micro: int,
         completed_at: datetime,
-    ) -> None:
-        run.status = "complete"
-        run.usage_available = usage_available
-        run.pricing_available = pricing_available
-        run.input_tokens = input_tokens
-        run.output_tokens = output_tokens
-        run.finish_reason = finish_reason
-        run.input_cost_micro = input_cost_micro
-        run.output_cost_micro = output_cost_micro
-        run.total_cost_micro = total_cost_micro
-        run.completed_at = completed_at
+    ) -> bool:
+        statement = (
+            update(GenerationRun)
+            .where(
+                GenerationRun.id == run.id,
+                GenerationRun.status.in_(("queued", "streaming")),
+            )
+            .values(
+                status="complete",
+                usage_available=usage_available,
+                pricing_available=pricing_available,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                finish_reason=finish_reason,
+                input_cost_micro=input_cost_micro,
+                output_cost_micro=output_cost_micro,
+                total_cost_micro=total_cost_micro,
+                completed_at=completed_at,
+                updated_at=completed_at,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        updated = session.execute(statement).rowcount == 1
+        if updated:
+            run.status = "complete"
+            run.usage_available = usage_available
+            run.pricing_available = pricing_available
+            run.input_tokens = input_tokens
+            run.output_tokens = output_tokens
+            run.finish_reason = finish_reason
+            run.input_cost_micro = input_cost_micro
+            run.output_cost_micro = output_cost_micro
+            run.total_cost_micro = total_cost_micro
+            run.completed_at = completed_at
+            run.updated_at = completed_at
+        return updated
 
     def fail(
         self,
+        session: Session,
         run: GenerationRun,
         error_code: str,
         completed_at: datetime,
-    ) -> None:
-        run.status = "failed"
-        run.error_code = error_code
-        run.completed_at = completed_at
+    ) -> bool:
+        statement = (
+            update(GenerationRun)
+            .where(
+                GenerationRun.id == run.id,
+                GenerationRun.status.in_(("queued", "streaming")),
+            )
+            .values(
+                status="failed",
+                error_code=error_code,
+                completed_at=completed_at,
+                updated_at=completed_at,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        updated = session.execute(statement).rowcount == 1
+        if updated:
+            run.status = "failed"
+            run.error_code = error_code
+            run.completed_at = completed_at
+            run.updated_at = completed_at
+        return updated
 
-    def cancel(self, run: GenerationRun, completed_at: datetime) -> None:
-        run.status = "cancelled"
-        run.completed_at = completed_at
+    def cancel(
+        self,
+        session: Session,
+        run: GenerationRun,
+        completed_at: datetime,
+    ) -> bool:
+        statement = (
+            update(GenerationRun)
+            .where(
+                GenerationRun.id == run.id,
+                GenerationRun.status.in_(("queued", "streaming")),
+            )
+            .values(
+                status="cancelled",
+                completed_at=completed_at,
+                updated_at=completed_at,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        updated = session.execute(statement).rowcount == 1
+        if updated:
+            run.status = "cancelled"
+            run.completed_at = completed_at
+            run.updated_at = completed_at
+        return updated
