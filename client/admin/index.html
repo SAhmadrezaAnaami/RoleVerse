@@ -6,16 +6,7 @@
     <meta name="theme-color" content="#7c3aed" />
     <meta name="description" content="RoleVerse administration and operations workspace." />
     <title>RoleVerse Admin</title>
-    <script>
-      try {
-        const savedTheme = localStorage.getItem('roleverse-theme');
-        if (savedTheme === 'dark' || savedTheme === 'light') {
-          document.documentElement.dataset.theme = savedTheme;
-        }
-      } catch (error) {
-        document.documentElement.dataset.theme = 'light';
-      }
-    </script>
+    <script src="../assets/js/theme-init.js"></script>
     <link rel="stylesheet" href="../assets/css/tokens.css" />
     <link rel="stylesheet" href="../assets/css/layout.css" />
     <link rel="stylesheet" href="../assets/css/components.css" />

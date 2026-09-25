@@ -10,6 +10,7 @@ from app.api.deps import (
     get_current_user,
     get_generation_service,
     get_rate_limiter,
+    require_csrf,
     require_safe_origin,
 )
 from app.db.models import User
@@ -30,7 +31,7 @@ from app.services.generation_service import GenerationContext
 router = APIRouter(
     prefix="/conversations",
     tags=["generations"],
-    dependencies=[Depends(require_safe_origin)],
+    dependencies=[Depends(require_safe_origin), Depends(require_csrf)],
 )
 
 
@@ -153,7 +154,8 @@ async def generate_response(
             ),
             mode="provider" if service.settings.live_provider_enabled else "preview",
         )
-    service.start(context)
+    if not service.start(context):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Generation is already in progress.")
     try:
         result = await service.provider.complete(
             context.provider_messages,
@@ -162,13 +164,14 @@ async def generate_response(
     except ProviderError as error:
         service.fail(context)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Generation service unavailable.") from error
-    service.complete(
+    if not service.complete(
         context,
         result.content,
         result.input_tokens,
         result.output_tokens,
         result.finish_reason,
-    )
+    ):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Generation is no longer active.")
     return MessagePairResponse(
         user_message=MessageRead.model_validate(context.user_message),
         assistant_message=(
@@ -219,7 +222,8 @@ async def stream_response(
             },
         )
 
-    service.start(context)
+    if not service.start(context):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Generation is already in progress.")
     stream_bind = service.session.get_bind()
     settings = service.settings
     mode = "provider" if settings.live_provider_enabled else "preview"
@@ -244,6 +248,16 @@ async def stream_response(
                 user.id,
                 message_id,
             )
+            if stream_context.run.status != "streaming":
+                yield next_event(
+                    "error",
+                    {
+                        "run_id": stream_context.run.id,
+                        "code": "generation_cancelled",
+                        "message": "Generation is no longer active.",
+                    },
+                )
+                return
             yield next_event(
                 "start",
                 {
@@ -272,13 +286,22 @@ async def stream_response(
                 if chunk.finish_reason is not None:
                     finish_reason = chunk.finish_reason
             content = "".join(partial_content)
-            stream_service.complete(
+            if not stream_service.complete(
                 stream_context,
                 content,
                 input_tokens,
                 output_tokens,
                 finish_reason,
-            )
+            ):
+                yield next_event(
+                    "error",
+                    {
+                        "run_id": stream_context.run.id,
+                        "code": "generation_cancelled",
+                        "message": "Generation is no longer active.",
+                    },
+                )
+                return
             yield next_event(
                 "done",
                 {

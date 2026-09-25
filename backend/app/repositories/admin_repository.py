@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -83,15 +83,30 @@ class AdminRepository:
             )
         )
         runs = list(session.scalars(statement))
+        cancelled_count = 0
         for run in runs:
-            run.status = "cancelled"
-            run.completed_at = cancelled_at
+            result = session.execute(
+                update(GenerationRun)
+                .where(
+                    GenerationRun.id == run.id,
+                    GenerationRun.status.in_(("queued", "streaming")),
+                )
+                .values(
+                    status="cancelled",
+                    completed_at=cancelled_at,
+                    updated_at=cancelled_at,
+                )
+                .execution_options(synchronize_session=False)
+            )
+            if result.rowcount != 1:
+                continue
+            cancelled_count += 1
             if run.assistant_message_id:
                 assistant = session.get(Message, run.assistant_message_id)
                 if assistant is not None:
                     assistant.status = "cancelled"
                     assistant.updated_at = cancelled_at
-        return len(runs)
+        return cancelled_count
 
     def list_provider_connections(self, session: Session) -> list[ProviderConnection]:
         statement = select(ProviderConnection).order_by(

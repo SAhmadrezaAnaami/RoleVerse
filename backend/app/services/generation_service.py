@@ -216,16 +216,19 @@ class GenerationService:
             already_complete=run.status == "complete",
         )
 
-    def start(self, context: GenerationContext) -> None:
+    def start(self, context: GenerationContext) -> bool:
         if context.already_complete:
-            return
+            return False
         now = self.clock()
-        self.generation_repository.mark_streaming(context.run)
+        if not self.generation_repository.mark_streaming(self.session, context.run, now):
+            self.session.rollback()
+            return False
         if context.assistant_message is not None:
             context.assistant_message.status = "streaming"
             context.assistant_message.updated_at = now
         context.run.updated_at = now
         self.session.commit()
+        return True
 
     def complete(
         self,
@@ -234,9 +237,9 @@ class GenerationService:
         input_tokens: int | None,
         output_tokens: int | None,
         finish_reason: str | None = None,
-    ) -> None:
+    ) -> bool:
         if context.already_complete or context.run.status in {"complete", "failed", "cancelled"}:
-            return
+            return False
         now = self.clock()
         usage_available = (
             input_tokens is not None
@@ -258,11 +261,8 @@ class GenerationService:
             safe_output_tokens,
             self.settings.provider_output_price_micro_per_million,
         ) if usage_available else 0
-        if context.assistant_message is not None:
-            context.assistant_message.content = content
-            context.assistant_message.status = "complete"
-            context.assistant_message.updated_at = now
-        self.generation_repository.complete(
+        updated = self.generation_repository.complete(
+            self.session,
             context.run,
             safe_input_tokens,
             safe_output_tokens,
@@ -274,30 +274,55 @@ class GenerationService:
             input_cost + output_cost,
             now,
         )
+        if not updated:
+            self.session.rollback()
+            return False
+        if context.assistant_message is not None:
+            context.assistant_message.content = content
+            context.assistant_message.status = "complete"
+            context.assistant_message.updated_at = now
         self.conversation_repository.touch(context.conversation, now)
         self.session.commit()
+        return True
 
-    def fail(self, context: GenerationContext, partial_content: str = "") -> None:
+    def fail(self, context: GenerationContext, partial_content: str = "") -> bool:
         if context.already_complete or context.run.status in {"complete", "failed", "cancelled"}:
-            return
+            return False
         now = self.clock()
+        updated = self.generation_repository.fail(
+            self.session,
+            context.run,
+            "provider_unavailable",
+            now,
+        )
+        if not updated:
+            self.session.rollback()
+            return False
         if context.assistant_message is not None:
             context.assistant_message.content = partial_content
             context.assistant_message.status = "failed"
             context.assistant_message.updated_at = now
-        self.generation_repository.fail(context.run, "provider_unavailable", now)
         self.session.commit()
+        return True
 
-    def cancel(self, context: GenerationContext, partial_content: str = "") -> None:
+    def cancel(self, context: GenerationContext, partial_content: str = "") -> bool:
         if context.already_complete or context.run.status in {"complete", "failed", "cancelled"}:
-            return
+            return False
         now = self.clock()
+        updated = self.generation_repository.cancel(
+            self.session,
+            context.run,
+            now,
+        )
+        if not updated:
+            self.session.rollback()
+            return False
         if context.assistant_message is not None:
             context.assistant_message.content = partial_content
             context.assistant_message.status = "cancelled"
             context.assistant_message.updated_at = now
-        self.generation_repository.cancel(context.run, now)
         self.session.commit()
+        return True
 
     @staticmethod
     def calculate_cost(tokens: int, price_per_million: int) -> int:

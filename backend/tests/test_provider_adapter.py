@@ -4,7 +4,7 @@ import json
 import httpx
 from openai import AsyncOpenAI
 
-from app.providers.base import ProviderMessage
+from app.providers.base import ProviderError, ProviderMessage
 from app.providers.openai_compatible import OpenAICompatibleProvider, OpenAIProviderConfig
 
 
@@ -76,3 +76,46 @@ def test_openai_compatible_adapter_normalizes_json_and_stream() -> None:
     assert "".join(chunk.delta for chunk in chunks) == "Hello"
     assert any(chunk.input_tokens == 3 and chunk.output_tokens == 2 for chunk in chunks)
     assert all(request.headers["authorization"] == "Bearer test-key" for request in requests)
+
+
+def test_openai_adapter_rejects_oversized_output() -> None:
+    async def exercise() -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "index": 0,
+                            "message": {"role": "assistant", "content": "too long"},
+                            "finish_reason": "stop",
+                        }
+                    ]
+                },
+            )
+
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = AsyncOpenAI(
+            api_key="test-key",
+            base_url="https://provider.example/v1",
+            http_client=http_client,
+        )
+        provider = OpenAICompatibleProvider(
+            OpenAIProviderConfig(
+                base_url="https://provider.example/v1",
+                api_key="test-key",
+                model="test-model",
+                max_output_characters=3,
+            ),
+            client=client,
+        )
+        try:
+            await provider.complete([ProviderMessage(role="user", content="Hello")], 32)
+        except ProviderError:
+            pass
+        else:
+            raise AssertionError("Expected the output limit to fail the provider request.")
+        finally:
+            await http_client.aclose()
+
+    asyncio.run(exercise())

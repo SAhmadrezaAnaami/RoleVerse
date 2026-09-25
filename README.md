@@ -51,7 +51,7 @@ python -m scripts.seed_dev
 python -m uvicorn app.main:app --reload
 ```
 
-The sign-in code is printed only to the development server console. Characters are seeded explicitly and conversations/messages are persisted per authenticated user. Provider generation is mock-first: normal development uses a deterministic local adapter, while live OpenAI-compatible calls require `LIVE_PROVIDER_ENABLED=true` and explicit server-side provider settings. Provider test configuration is represented by `backend/tests/fixtures/llm_openai_compatible.example.json`; real local credentials belong in the ignored `*.local.json` file and must never be committed. The streaming and non-streaming generation routes persist ordered assistant messages, generation status, token usage, and integer micro-cost snapshots. The administration control plane is available to authorized users at `/admin.html`; it manages safe metadata, users, bans, usage visibility, settings, and audit events without storing provider secrets. Configure `GOD_USER_PHONE` before using the development admin workspace.
+The sign-in code is printed only to the development server console. Characters are seeded explicitly and conversations/messages are persisted per authenticated user. Provider generation is mock-first: normal development uses a deterministic local adapter, while live OpenAI-compatible calls require `LIVE_PROVIDER_ENABLED=true` and explicit server-side provider settings. Provider test configuration is represented by `backend/tests/fixtures/llm_openai_compatible.example.json`; real local credentials belong in the ignored `*.local.json` file and must never be committed. The streaming and non-streaming generation routes persist ordered assistant messages, generation status, token usage, and integer micro-cost snapshots. The administration control plane is available to authorized users at `/admin.html`; it manages safe metadata, users, bans, usage visibility, settings, and audit events without storing provider secrets. Authenticated browser mutations use a session-bound CSRF token, and migration `0005_security_hardening` requires legacy sessions to sign in again. Configure `GOD_USER_PHONE` before using the development admin workspace.
 
 ## Rules
 
@@ -74,7 +74,7 @@ The sign-in code is printed only to the development server console. Characters a
 ## Stack
 
 - python + sqlalchemy + alembic + fastapi + sqlite + openai SDK
-- html, css, javascript, tailwind (no npm or nodejs is needded use static tailwind cdn)
+- html, local css, and javascript (no npm or nodejs dependency; no executable CDN scripts)
 - good pretty fonts
 - every resource must be static
 - seperate client and backend folders in root for backend and client files.

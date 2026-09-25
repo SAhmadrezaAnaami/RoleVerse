@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_conversation_service, get_current_user, require_safe_origin
+from app.api.deps import (
+    get_conversation_service,
+    get_current_user,
+    require_csrf,
+    require_safe_origin,
+)
 from app.db.models import User
 from app.schemas.characters import CharacterSummary
 from app.schemas.conversations import (
@@ -21,7 +26,7 @@ from app.services import (
 router = APIRouter(
     prefix="/conversations",
     tags=["conversations"],
-    dependencies=[Depends(require_safe_origin)],
+    dependencies=[Depends(require_safe_origin), Depends(require_csrf)],
 )
 
 

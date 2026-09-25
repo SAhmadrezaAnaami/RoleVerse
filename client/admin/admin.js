@@ -78,14 +78,25 @@
     if (value !== undefined) node.textContent = String(value);
     return node;
   };
+  const csrfToken = () => {
+    const prefix = 'roleverse_csrf=';
+    const value = document.cookie.split(';').map((item) => item.trim()).find((item) => item.startsWith(prefix));
+    return value ? decodeURIComponent(value.slice(prefix.length)) : '';
+  };
   const request = async (path, options = {}) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const token = csrfToken();
     try {
       const response = await fetch(path, {
         ...options,
         credentials: 'include',
+        cache: 'no-store',
+        redirect: 'error',
         headers: {
           Accept: 'application/json',
           ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(unsafe && token ? { 'X-CSRF-Token': token } : {}),
           ...(options.headers || {}),
         },
       });

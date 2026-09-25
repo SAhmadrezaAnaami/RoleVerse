@@ -18,6 +18,19 @@ from app.services import OtpService
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
 
+class CsrfTestClient(TestClient):
+    auto_security_headers = True
+
+    def request(self, method, url, **kwargs):
+        if self.auto_security_headers:
+            headers = dict(kwargs.get("headers") or {})
+            headers.setdefault("Origin", str(self.base_url).rstrip("/"))
+            if str(method).upper() not in {"GET", "HEAD", "OPTIONS"}:
+                headers.setdefault("X-CSRF-Token", self.cookies.get("roleverse_csrf") or "")
+            kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
+
+
 class ManualClock:
     def __init__(self) -> None:
         self.value = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
@@ -135,5 +148,5 @@ def application(migrated_db, test_settings, manual_clock, otp_sender, code_gener
 
 @pytest.fixture
 def api_client(application):
-    with TestClient(application, base_url="https://testserver") as client:
+    with CsrfTestClient(application, base_url="https://testserver") as client:
         yield client

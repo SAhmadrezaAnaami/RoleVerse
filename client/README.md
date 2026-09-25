@@ -1,6 +1,6 @@
 # RoleVerse Client
 
-The client is a static, no-build-step web application. It uses HTML, CSS, vanilla JavaScript, the Tailwind CDN for utility availability, and local semantic CSS for the RoleVerse design system.
+The client is a static, no-build-step web application. It uses HTML, local CSS, and vanilla JavaScript with the RoleVerse semantic design system; no executable third-party script is loaded.
 
 ## Run locally
 
@@ -29,4 +29,4 @@ The current client uses deterministic sample characters and local replies. It in
 - Mock-first provider streaming with cancellation and persisted generation state
 - Authorized administration workspace at `/admin.html` or `/admin/`
 
-The sign-in flow uses an HttpOnly session cookie and never stores the OTP, session token, provider secret, or admin response data in browser storage. The administration workspace shares the existing theme and language preferences, supports RTL/LTR, and renders provider data as safe text. Do not add a bundler or Node.js dependency unless the product requirements change.
+The sign-in flow uses an HttpOnly session cookie and never stores the OTP, session token, provider secret, or admin response data in browser storage. Authenticated mutations read the separate `roleverse_csrf` cookie and send the `X-CSRF-Token` header. The administration workspace shares the existing theme and language preferences, supports RTL/LTR, and renders provider data as safe text. Do not add a bundler or Node.js dependency unless the product requirements change.

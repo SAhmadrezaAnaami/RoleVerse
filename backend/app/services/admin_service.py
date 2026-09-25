@@ -46,7 +46,12 @@ class AdminService:
             (provider for provider in self.list_providers() if provider.is_default),
             None,
         )
-        runtime_mode = "mock" if default_provider is None or default_provider.adapter == "mock" else "live"
+        runtime_mode = "live" if (
+            default_provider is not None
+            and self.settings.live_provider_enabled
+            and default_provider.adapter == "openai-compatible"
+            and default_provider.base_url == self.settings.openai_base_url
+        ) else "mock"
         return {
             "metrics": self.repository.overview_metrics(self.session),
             "rate_limit_policy": {
@@ -114,6 +119,11 @@ class AdminService:
         if user.role != role:
             user.role = role
             user.updated_at = self.clock()
+            self.auth_repository.invalidate_user_sessions(
+                self.session,
+                user.id,
+                self.clock(),
+            )
             self._audit(
                 actor.id,
                 "user.role_changed",
@@ -140,7 +150,7 @@ class AdminService:
         user.banned_at = now
         user.ban_reason = reason.strip()[:500]
         user.updated_at = now
-        self.auth_repository.revoke_user_sessions(self.session, user.id, now)
+        self.auth_repository.invalidate_user_sessions(self.session, user.id, now)
         self.repository.cancel_active_generations_for_user(self.session, user.id, now)
         self._audit(
             actor.id,
@@ -173,6 +183,31 @@ class AdminService:
             "user",
             user.id,
             {},
+        )
+        self.session.commit()
+        return user
+
+    def revoke_sessions(self, actor: User, user_id: str) -> User:
+        self._require_admin(actor)
+        user = self.repository.get_user(self.session, user_id)
+        if user is None:
+            raise AdminNotFoundError("User not found.")
+        if user.id == actor.id or self._is_god_user(user):
+            raise AdminInputError("This account cannot be changed.")
+        if user.role == "admin" and not self._is_god_user(actor):
+            raise AdminInputError("God-user access is required for an administrator target.")
+        now = self.clock()
+        revoked_count = self.auth_repository.invalidate_user_sessions(
+            self.session,
+            user.id,
+            now,
+        )
+        self._audit(
+            actor.id,
+            "user.sessions_revoked",
+            "user",
+            user.id,
+            {"revoked_sessions": revoked_count},
         )
         self.session.commit()
         return user
@@ -256,6 +291,8 @@ class AdminService:
         values: dict[str, Any],
     ) -> ProviderModel:
         self._require_admin(actor)
+        if not self._is_god_user(actor):
+            raise AdminInputError("God-user access is required for model management.")
         self._require_provider(provider_id)
         normalized = self._validate_model_values(values)
         if self.repository.get_provider_model_by_name(self.session, provider_id, normalized["name"]):
@@ -283,6 +320,8 @@ class AdminService:
         values: dict[str, Any],
     ) -> ProviderModel:
         self._require_admin(actor)
+        if not self._is_god_user(actor):
+            raise AdminInputError("God-user access is required for model management.")
         model = self.repository.get_provider_model(self.session, provider_id, model_id)
         if model is None:
             raise AdminNotFoundError("Model not found.")
@@ -469,6 +508,9 @@ class AdminService:
             raise AdminInputError("Unsupported provider status.")
         if secret_source not in {"none", "environment"}:
             raise AdminInputError("Unsupported secret source.")
+        if adapter == "mock":
+            if base_url:
+                raise AdminInputError("Mock providers cannot define a base URL.")
         if adapter == "openai-compatible":
             if not base_url:
                 raise AdminInputError("OpenAI-compatible providers require a base URL.")

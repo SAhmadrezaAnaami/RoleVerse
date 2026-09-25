@@ -56,6 +56,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault("X-Frame-Options", "DENY")
+        if settings.environment in {"staging", "production"}:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
         if (
             request.url.path.startswith(f"{settings.api_prefix}/auth")
             or request.url.path.startswith(f"{settings.api_prefix}/conversations")
@@ -64,11 +69,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Pragma"] = "no-cache"
-        if request.url.path.startswith("/admin"):
+        if (
+            request.url.path == "/"
+            or request.url.path == "/admin.html"
+            or request.url.path.startswith("/assets/")
+            or request.url.path.startswith("/admin")
+        ):
             response.headers.setdefault(
                 "Content-Security-Policy",
-                "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+                "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
             )
+        if request.url.path.startswith("/admin") or request.url.path == "/admin.html":
             response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
@@ -77,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Accept", "Content-Type"],
+        allow_headers=["Accept", "Content-Type", "X-CSRF-Token"],
     )
     application.include_router(api_router, prefix=settings.api_prefix)
 
