@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from app.api.deps import get_current_user, get_otp_service, require_safe_origin
+from app.api.deps import get_current_user, get_otp_service, require_csrf, require_safe_origin
 from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.schemas.auth import OtpRequest, OtpRequestResponse, OtpVerifyRequest, SessionResponse, UserRead
@@ -44,6 +44,11 @@ async def verify_otp(
     service: OtpService = Depends(get_otp_service),
     settings: Settings = Depends(get_settings),
 ) -> SessionResponse:
+    if settings.environment in {"staging", "production"} and request.url.scheme != "https":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authentication requires HTTPS.",
+        )
     try:
         issued_session = service.verify_otp(
             payload.phone,
@@ -60,6 +65,16 @@ async def verify_otp(
         max_age=settings.session_ttl_minutes * 60,
         expires=issued_session.expires_at,
         httponly=True,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        path="/",
+    )
+    response.set_cookie(
+        key="roleverse_csrf",
+        value=issued_session.csrf_token,
+        max_age=settings.session_ttl_minutes * 60,
+        expires=issued_session.expires_at,
+        httponly=False,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         path="/",
@@ -85,11 +100,22 @@ async def logout(
         httponly=True,
         samesite=settings.cookie_samesite,
     )
+    response.delete_cookie(
+        key="roleverse_csrf",
+        path="/",
+        secure=settings.cookie_secure,
+        httponly=False,
+        samesite=settings.cookie_samesite,
+    )
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
 
 
-@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/logout-all",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_csrf)],
+)
 async def logout_all(
     response: Response,
     user: User = Depends(get_current_user),
@@ -102,6 +128,13 @@ async def logout_all(
         path="/",
         secure=settings.cookie_secure,
         httponly=True,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        key="roleverse_csrf",
+        path="/",
+        secure=settings.cookie_secure,
+        httponly=False,
         samesite=settings.cookie_samesite,
     )
     response.status_code = status.HTTP_204_NO_CONTENT
