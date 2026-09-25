@@ -31,6 +31,12 @@ def test_initial_migration_round_trip(tmp_path) -> None:
     }.issubset(table_names)
     inspector = inspect(engine)
     assert "source" in {column["name"] for column in inspector.get_columns("messages")}
+    auth_session_columns = {
+        column["name"] for column in inspector.get_columns("auth_sessions")
+    }
+    assert {"csrf_token_hash", "auth_epoch"}.issubset(auth_session_columns)
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    assert "auth_epoch" in user_columns
     generation_columns = {
         column["name"] for column in inspector.get_columns("generation_runs")
     }
@@ -61,6 +67,47 @@ def test_initial_migration_round_trip(tmp_path) -> None:
     engine = create_engine(database_url)
     assert "users" in inspect(engine).get_table_names()
     engine.dispose()
+
+
+def test_security_migration_preserves_legacy_sessions_and_fails_closed(tmp_path) -> None:
+    database_path = tmp_path / "security-migration.sqlite3"
+    database_url = f"sqlite:///{database_path.as_posix()}"
+    config = Config(str(BACKEND_ROOT / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    upgrade(config, "0004_admin_operations")
+    engine = create_engine(database_url)
+    now = "2026-01-01 00:00:00"
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users (id, phone, display_name, role, status, preferred_language, created_at, updated_at) "
+                "VALUES ('user-legacy', '+15550000009', '', 'user', 'active', 'en', :now, :now)"
+            ),
+            {"now": now},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO auth_sessions (id, user_id, token_hash, expires_at, last_seen_at, created_at, updated_at) "
+                "VALUES ('session-legacy', 'user-legacy', 'legacy-hash', :future, :now, :now, :now)"
+            ),
+            {"future": "2099-01-01 00:00:00", "now": now},
+        )
+    engine.dispose()
+    upgrade(config, "head")
+    engine = create_engine(database_url)
+    with engine.connect() as connection:
+        row = connection.execute(
+            text("SELECT auth_epoch, csrf_token_hash FROM auth_sessions WHERE id = 'session-legacy'")
+        ).one()
+        user_epoch = connection.execute(
+            text("SELECT auth_epoch FROM users WHERE id = 'user-legacy'")
+        ).scalar_one()
+    assert user_epoch == 1
+    assert row.auth_epoch == 1
+    assert row.csrf_token_hash == ""
+    engine.dispose()
+    downgrade(config, "0004_admin_operations")
+    upgrade(config, "head")
 
 
 def test_generation_migration_backfills_existing_message_sources(tmp_path) -> None:
