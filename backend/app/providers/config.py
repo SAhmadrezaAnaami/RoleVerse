@@ -30,9 +30,11 @@ def validate_provider_url(
         raise ProviderConfigurationError("Production provider URLs must use HTTPS.")
     if production and port not in {None, 80, 443}:
         raise ProviderConfigurationError("Production provider URLs must use a standard port.")
-    hostname = parsed.hostname.lower()
+    hostname = parsed.hostname.lower().rstrip(".")
     if production and (hostname == "localhost" or hostname.endswith(".local")):
         raise ProviderConfigurationError("Provider URL cannot target a local hostname.")
+    if production and not allowed_hosts:
+        raise ProviderConfigurationError("Production provider hosts require an explicit allowlist.")
     if production and allowed_hosts is not None and hostname not in allowed_hosts:
         raise ProviderConfigurationError("Provider URL is not in the configured host allowlist.")
     try:
@@ -85,6 +87,8 @@ def load_provider_config(settings: Settings) -> OpenAIProviderConfig:
         for host in settings.provider_allowed_hosts.split(",")
         if host.strip()
     }
+    if settings.environment.lower() == "production" and not allowed_hosts:
+        raise ProviderConfigurationError("Production provider hosts require an explicit allowlist.")
     validate_provider_url(
         base_url,
         settings.environment,
@@ -95,4 +99,5 @@ def load_provider_config(settings: Settings) -> OpenAIProviderConfig:
         api_key=api_key,
         model=model,
         timeout_seconds=settings.provider_timeout_seconds,
+        max_output_characters=settings.provider_max_output_characters,
     )

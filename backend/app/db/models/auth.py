@@ -29,6 +29,8 @@ class AuthSession(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     token_hash: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    csrf_token_hash: Mapped[str] = mapped_column(String(64))
+    auth_epoch: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

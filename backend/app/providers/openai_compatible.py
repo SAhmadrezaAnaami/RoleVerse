@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from inspect import isawaitable
 
+import httpx
 from openai import AsyncOpenAI
 
 from app.providers.base import ProviderChunk, ProviderError, ProviderMessage, ProviderResult
@@ -13,6 +14,7 @@ class OpenAIProviderConfig:
     api_key: str = field(repr=False)
     model: str
     timeout_seconds: int = 60
+    max_output_characters: int = 200000
 
 
 class OpenAICompatibleProvider:
@@ -25,6 +27,11 @@ class OpenAICompatibleProvider:
             api_key=config.api_key,
             base_url=config.base_url,
             timeout=config.timeout_seconds,
+            http_client=httpx.AsyncClient(
+                timeout=config.timeout_seconds,
+                follow_redirects=False,
+                trust_env=False,
+            ),
         )
 
     async def complete(
@@ -41,6 +48,8 @@ class OpenAICompatibleProvider:
             )
             choice = response.choices[0] if response.choices else None
             content = getattr(getattr(choice, "message", None), "content", "") or ""
+            if len(content) > self.config.max_output_characters:
+                raise ProviderError("Provider response exceeded the output limit.")
             usage = getattr(response, "usage", None)
             return ProviderResult(
                 content=content,
@@ -65,6 +74,7 @@ class OpenAICompatibleProvider:
             )
             input_tokens = 0
             output_tokens = 0
+            output_characters = 0
             async for event in response:
                 usage = getattr(event, "usage", None)
                 if usage is not None:
@@ -76,6 +86,9 @@ class OpenAICompatibleProvider:
                 choice = choices[0]
                 delta = getattr(getattr(choice, "delta", None), "content", None)
                 if delta:
+                    output_characters += len(delta)
+                    if output_characters > self.config.max_output_characters:
+                        raise ProviderError("Provider response exceeded the output limit.")
                     yield ProviderChunk(delta=delta)
                 finish_reason = getattr(choice, "finish_reason", None)
                 if finish_reason:

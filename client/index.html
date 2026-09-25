@@ -9,43 +9,13 @@
       content="RoleVerse is a bilingual role-play chat workspace for memorable characters."
     />
     <title>RoleVerse — Your characters, your stories</title>
-    <script>
-      try {
-        const savedTheme = localStorage.getItem('roleverse-theme');
-        if (savedTheme === 'dark' || savedTheme === 'light') {
-          document.documentElement.dataset.theme = savedTheme;
-        }
-      } catch (error) {
-        document.documentElement.dataset.theme = 'light';
-      }
-    </script>
+    <script src="./assets/js/theme-init.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              roleverse: {
-                50: '#faf5ff',
-                100: '#f3e8ff',
-                500: '#7c3aed',
-                600: '#6d28d9',
-                700: '#5b21b6',
-              },
-            },
-            fontFamily: {
-              sans: ['Plus Jakarta Sans', 'Vazirmatn', 'sans-serif'],
-            },
-          },
-        },
-      };
-    </script>
     <link rel="stylesheet" href="./assets/css/tokens.css" />
     <link rel="stylesheet" href="./assets/css/layout.css" />
     <link rel="stylesheet" href="./assets/css/components.css" />

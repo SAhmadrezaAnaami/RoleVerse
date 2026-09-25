@@ -23,6 +23,20 @@ def test_live_provider_requires_complete_configuration() -> None:
         load_provider_config(settings)
 
 
+def test_production_live_provider_requires_an_explicit_host_allowlist() -> None:
+    settings = Settings(
+        live_provider_enabled=True,
+        environment="production",
+        auth_pepper="a" * 32,
+        cookie_secure=True,
+        openai_api_key="test-key",
+        openai_base_url="https://api.example.com/v1",
+        openai_model="test-model",
+    )
+    with pytest.raises(ProviderConfigurationError):
+        load_provider_config(settings)
+
+
 def test_provider_url_validation_blocks_unsafe_production_targets() -> None:
     with pytest.raises(ProviderConfigurationError):
         validate_provider_url("http://api.example.com/v1", "production")
@@ -66,6 +80,8 @@ def test_production_rejects_provider_fixtures(tmp_path) -> None:
         live_provider_enabled=True,
         provider_fixture_path=fixture,
         environment="production",
+        auth_pepper="a" * 32,
+        cookie_secure=True,
     )
     with pytest.raises(ProviderConfigurationError):
         load_provider_config(settings)

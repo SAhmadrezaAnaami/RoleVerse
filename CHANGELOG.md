@@ -32,6 +32,9 @@ All notable changes to RoleVerse are documented in this file.
 - Separate responsive bilingual admin workspace at `/admin.html` and `/admin/` with safe provider metadata and no secret inputs.
 - Ban operations revoke existing sessions and cancel active generations transactionally.
 - Persisted generation rate-limit and maximum-output settings are read by the generation route.
+- Session-bound CSRF protection, auth epochs, strict origin checks, and administrative session revocation.
+- CSP-protected static client with the executable Tailwind CDN removed.
+- Compare-and-set generation finalization, bounded provider output, redirect-disabled live clients, and redacted admin provider endpoints.
 
 ### Changed
 
@@ -43,5 +46,6 @@ All notable changes to RoleVerse are documented in this file.
 - Sessions currently use a development role column; normalized permissions and god-user promotion workflows are deferred.
 - Anonymous client conversations still use deterministic local preview data.
 - Live provider calls, durable resumable event replay, and production provider administration require explicit operational configuration and are not enabled by default.
-- The admin control plane is metadata-only; encrypted server-side provider secret management, live provider activation, distributed quotas, and full session-bound CSRF hardening are deferred.
+- The admin control plane is metadata-only; encrypted server-side provider secret management, live provider activation, distributed quotas, DNS-pinned egress, and production observability are deferred.
+- Sessions created before migration `0005_security_hardening` require reauthentication because legacy CSRF hashes fail closed.
 - The marketplace publishing workflow is not implemented yet.

@@ -31,8 +31,15 @@ def get_conversation_service(session: Session = Depends(get_db)) -> Conversation
     return ConversationService(session)
 
 
-def get_provider_client(settings: Settings = Depends(get_settings)) -> ProviderClient:
-    return get_provider(settings)
+def get_provider_client(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+) -> ProviderClient:
+    provider = getattr(request.app.state, "provider", None)
+    if provider is None:
+        provider = get_provider(settings)
+        request.app.state.provider = provider
+    return provider
 
 
 def get_generation_service(
@@ -62,7 +69,7 @@ def require_safe_origin(
     if request.method in {"GET", "HEAD", "OPTIONS"}:
         return
     origin = request.headers.get("origin")
-    if origin and origin not in allowed_origins(request, settings):
+    if not origin or origin not in allowed_origins(request, settings):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The request origin is not allowed.",
@@ -102,6 +109,22 @@ def get_current_user(
             headers={"WWW-Authenticate": "Session"},
         )
     return user
+
+
+def require_csrf(
+    request: Request,
+    service: OtpService = Depends(get_otp_service),
+    user: User = Depends(get_current_user),
+) -> None:
+    if request.method in {"GET", "HEAD", "OPTIONS"}:
+        return
+    session_token = request.cookies.get(service.settings.session_cookie_name)
+    csrf_token = request.headers.get("x-csrf-token")
+    if not service.csrf_is_valid(session_token or "", csrf_token or ""):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The request could not be verified.",
+        )
 
 
 def get_admin_user(user: User = Depends(get_current_user)) -> User:

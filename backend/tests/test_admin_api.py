@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.api.routes.admin import redacted_provider_endpoint
 from app.core.phone import mask_phone
 from app.db.models import SystemSetting
 
@@ -18,13 +19,42 @@ def login(client, otp_sender, phone: str) -> None:
     assert verify_response.status_code == 200
 
 
+def csrf_headers(client) -> dict[str, str]:
+    return {
+        "Origin": "https://testserver",
+        "X-CSRF-Token": client.cookies.get("roleverse_csrf") or "",
+    }
+
+
+def test_provider_endpoint_response_is_redacted() -> None:
+    value = redacted_provider_endpoint("https://internal.example:8443/v1/private/path")
+    assert value == "https://internal.example:8443"
+    assert "/private/path" not in value
+
+
+def test_cors_preflight_allows_csrf_header(api_client) -> None:
+    response = api_client.options(
+        "/api/v1/admin/overview",
+        headers={
+            "Origin": "http://localhost:8000",
+            "Access-Control-Request-Method": "PATCH",
+            "Access-Control-Request-Headers": "X-CSRF-Token",
+        },
+    )
+    assert response.status_code == 200
+    assert "X-CSRF-Token" in response.headers["access-control-allow-headers"]
+
+
 def test_admin_static_surface_sets_security_headers(application) -> None:
     with TestClient(application, base_url="https://testserver") as client:
         response = client.get("/admin/")
+        root_response = client.get("/")
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
     assert response.headers["referrer-policy"] == "no-referrer"
+    assert "script-src 'self'" in root_response.headers["content-security-policy"]
+    assert "cdn.tailwindcss.com" not in root_response.text
 
 
 def test_admin_routes_require_admin_role(api_client, otp_sender) -> None:
@@ -74,7 +104,7 @@ def test_admin_ban_is_audited_and_protects_admin_accounts(
 
     response = api_client.post(
         f"/api/v1/admin/users/{target['id']}/ban",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"reason": "Development moderation test"},
     )
     assert response.status_code == 200
@@ -91,14 +121,14 @@ def test_admin_ban_is_audited_and_protects_admin_accounts(
 
     self_ban = api_client.post(
         f"/api/v1/admin/users/{admin['id']}/ban",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"reason": "Self-ban attempt"},
     )
     assert self_ban.status_code == 422
 
     demote = api_client.patch(
         f"/api/v1/admin/users/{admin['id']}/role",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"role": "user"},
     )
     assert demote.status_code == 422
@@ -106,6 +136,7 @@ def test_admin_ban_is_audited_and_protects_admin_accounts(
 
 def test_admin_mutations_require_same_origin(api_client, otp_sender) -> None:
     login(api_client, otp_sender, "+15550000000")
+    api_client.auto_security_headers = False
     response = api_client.patch(
         "/api/v1/admin/settings/maintenance_mode",
         json={"value": True},
@@ -113,28 +144,88 @@ def test_admin_mutations_require_same_origin(api_client, otp_sender) -> None:
     assert response.status_code == 403
 
 
+def test_admin_mutations_require_csrf_token(api_client, otp_sender) -> None:
+    login(api_client, otp_sender, "+15550000000")
+    api_client.auto_security_headers = False
+    missing = api_client.patch(
+        "/api/v1/admin/settings/maintenance_mode",
+        headers={"Origin": "https://testserver"},
+        json={"value": True},
+    )
+    assert missing.status_code == 403
+    api_client.auto_security_headers = True
+    invalid = api_client.patch(
+        "/api/v1/admin/settings/maintenance_mode",
+        headers={"Origin": "https://testserver", "X-CSRF-Token": "invalid"},
+        json={"value": True},
+    )
+    assert invalid.status_code == 403
+    valid = api_client.patch(
+        "/api/v1/admin/settings/maintenance_mode",
+        headers=csrf_headers(api_client),
+        json={"value": True},
+    )
+    assert valid.status_code == 200
+
+    old_token = api_client.cookies.get("roleverse_csrf")
+    api_client.post("/api/v1/auth/logout")
+    login(api_client, otp_sender, "+15550000000")
+    rotated = api_client.patch(
+        "/api/v1/admin/settings/maintenance_mode",
+        headers={"Origin": "https://testserver", "X-CSRF-Token": old_token or ""},
+        json={"value": False},
+    )
+    assert rotated.status_code == 403
+
+
 def test_only_god_user_can_change_roles(
+    application,
     api_client,
     otp_sender,
 ) -> None:
     login(api_client, otp_sender, "+15551234567")
+    target_session = api_client.cookies.get("roleverse_session")
     api_client.post("/api/v1/auth/logout")
     login(api_client, otp_sender, "+15550000000")
     target = api_client.get("/api/v1/admin/users?search=15551234567").json()["items"][0]
     promoted = api_client.patch(
         f"/api/v1/admin/users/{target['id']}/role",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"role": "admin"},
     )
     assert promoted.status_code == 200
+    with TestClient(application, base_url="https://testserver") as old_target_client:
+        old_target_client.cookies.set("roleverse_session", target_session)
+        assert old_target_client.get("/api/v1/auth/me").status_code == 401
     api_client.post("/api/v1/auth/logout")
     login(api_client, otp_sender, "+15551234567")
     forbidden = api_client.patch(
         f"/api/v1/admin/users/{target['id']}/role",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"role": "user"},
     )
     assert forbidden.status_code == 403
+
+
+def test_admin_can_revoke_user_sessions_atomically(
+    application,
+    api_client,
+    otp_sender,
+) -> None:
+    login(api_client, otp_sender, "+15551234567")
+    target_session = api_client.cookies.get("roleverse_session")
+    login(api_client, otp_sender, "+15550000000")
+    target = api_client.get("/api/v1/admin/users?search=15551234567").json()["items"][0]
+    response = api_client.post(
+        f"/api/v1/admin/users/{target['id']}/revoke-sessions",
+        headers=csrf_headers(api_client),
+    )
+    assert response.status_code == 200
+    with TestClient(application, base_url="https://testserver") as old_client:
+        old_client.cookies.set("roleverse_session", target_session)
+        assert old_client.get("/api/v1/auth/me").status_code == 401
+    audit = api_client.get("/api/v1/admin/audit").json()
+    assert any(event["action"] == "user.sessions_revoked" for event in audit)
 
 
 def test_admin_can_manage_provider_metadata_without_secrets(
@@ -144,7 +235,7 @@ def test_admin_can_manage_provider_metadata_without_secrets(
     login(api_client, otp_sender, "+15550000000")
     provider_response = api_client.post(
         "/api/v1/admin/providers",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={
             "name": "Test Provider",
             "slug": "test-provider",
@@ -162,7 +253,7 @@ def test_admin_can_manage_provider_metadata_without_secrets(
     assert provider["activation_supported"] is False
     rejected_secret = api_client.post(
         "/api/v1/admin/providers",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={
             "name": "Unsafe Provider",
             "slug": "unsafe-provider",
@@ -174,7 +265,7 @@ def test_admin_can_manage_provider_metadata_without_secrets(
 
     model_response = api_client.post(
         f"/api/v1/admin/providers/{provider['id']}/models",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={
             "name": "test-model",
             "display_name": "Test Model",
@@ -206,7 +297,7 @@ def test_admin_settings_validate_ranges_and_write_audit(api_client, otp_sender) 
     login(api_client, otp_sender, "+15550000000")
     invalid = api_client.patch(
         "/api/v1/admin/settings/generation_rate_limit_per_user",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"value": 0},
     )
     assert invalid.status_code == 422
@@ -215,7 +306,7 @@ def test_admin_settings_validate_ranges_and_write_audit(api_client, otp_sender) 
     assert rate_policy.status_code == 200
     updated_policy = api_client.put(
         "/api/v1/admin/rate-limits",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={
             "per_user_limit": 30,
             "global_limit": 120,
@@ -228,7 +319,7 @@ def test_admin_settings_validate_ranges_and_write_audit(api_client, otp_sender) 
 
     valid = api_client.patch(
         "/api/v1/admin/settings/generation_rate_limit_per_user",
-        headers={"Origin": "https://testserver"},
+        headers=csrf_headers(api_client),
         json={"value": 25},
     )
     assert valid.status_code == 200

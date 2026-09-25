@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import AuthSession, OtpChallenge
+from app.db.models import AuthSession, OtpChallenge, User
 
 
 class AuthRepository:
@@ -79,6 +79,8 @@ class AuthRepository:
         session: Session,
         user_id: str,
         token_hash: str,
+        csrf_token_hash: str,
+        auth_epoch: int,
         expires_at: datetime,
         last_seen_at: datetime,
         user_agent: str | None,
@@ -86,6 +88,8 @@ class AuthRepository:
         auth_session = AuthSession(
             user_id=user_id,
             token_hash=token_hash,
+            csrf_token_hash=csrf_token_hash,
+            auth_epoch=auth_epoch,
             expires_at=expires_at,
             last_seen_at=last_seen_at,
             user_agent=user_agent,
@@ -100,10 +104,16 @@ class AuthRepository:
         token_hash: str,
         now: datetime,
     ) -> AuthSession | None:
-        statement = select(AuthSession).where(
-            AuthSession.token_hash == token_hash,
-            AuthSession.revoked_at.is_(None),
-            AuthSession.expires_at > now,
+        statement = (
+            select(AuthSession)
+            .join(User, AuthSession.user_id == User.id)
+            .where(
+                AuthSession.token_hash == token_hash,
+                AuthSession.revoked_at.is_(None),
+                AuthSession.expires_at > now,
+                AuthSession.csrf_token_hash != "",
+                AuthSession.auth_epoch == User.auth_epoch,
+            )
         )
         return session.scalar(statement)
 
@@ -122,6 +132,28 @@ class AuthRepository:
         )
         for auth_session in session.scalars(statement):
             auth_session.revoked_at = revoked_at
+
+    def invalidate_user_sessions(
+        self,
+        session: Session,
+        user_id: str,
+        invalidated_at: datetime,
+    ) -> int:
+        user = session.get(User, user_id)
+        if user is None:
+            return 0
+        user.auth_epoch += 1
+        sessions = list(
+            session.scalars(
+                select(AuthSession).where(
+                    AuthSession.user_id == user_id,
+                    AuthSession.revoked_at.is_(None),
+                )
+            )
+        )
+        for auth_session in sessions:
+            auth_session.revoked_at = invalidated_at
+        return len(sessions)
 
     def touch_session(self, auth_session: AuthSession, last_seen_at: datetime) -> None:
         auth_session.last_seen_at = last_seen_at

@@ -126,7 +126,15 @@ The first persisted vertical slice now includes:
 
 The role column is an initial development boundary. A normalized role/permission model and explicit god-user promotion workflow will be added with the administration section. The configured god phone is never accepted from the client and is normalized at startup.
 
-The development OTP sender writes only a masked phone and generated code to the server console. It is rejected when the service is configured for production until a real delivery adapter is supplied. Browser storage contains only theme and language preferences; sessions use an HttpOnly cookie.
+The development OTP sender writes only a masked phone and generated code to the server console. It is rejected when the service is configured for production until a real delivery adapter is supplied. Browser storage contains only theme and language preferences; sessions use an HttpOnly cookie. Unsafe authenticated requests additionally use a separate synchronizer CSRF cookie and `X-CSRF-Token` header.
+
+## Current security hardening section
+
+Migration `0005_security_hardening` adds session CSRF hashes and user/session auth epochs. New OTP sessions receive a random CSRF token whose HMAC digest is stored server-side. Authenticated unsafe requests require both a trusted `Origin` and the matching CSRF header. Logout-all, bans, role changes, and administrative session revocation increment the user epoch and invalidate older sessions atomically.
+
+Legacy sessions with an empty CSRF hash fail closed after migration and require a fresh OTP login. Production and staging settings require an explicit high-entropy auth pepper, secure cookies, and HTTPS for authentication. The static client no longer loads executable third-party JavaScript and receives a restrictive CSP.
+
+Generation terminal updates use conditional status transitions. A completion, failure, or cancellation that races with an administrative cancellation cannot overwrite the terminal state. Live provider adapters disable redirects and proxy environment inheritance, enforce production host allowlists, and cap provider output characters; database provider rows remain metadata-only and are not runtime activation sources.
 
 ## Current character and conversation section
 
@@ -171,6 +179,6 @@ The admin control plane is a separate static surface at `/admin.html` and `/admi
 
 Admin API routes are under `/api/v1/admin` and return masked user phone numbers. Provider and model records are safe metadata only: no API key, authorization header, fixture path, prompt, or message content is stored or returned. Provider records do not activate the runtime registry; the existing environment/fixture provider boundary remains authoritative.
 
-The admin workspace exposes overview metrics, users and access, provider/model metadata, usage and estimated provider cost, typed settings, rate-limit values, and an append-only audit feed. Admin responses use `no-store`, and unsafe admin mutations require an allowed same-origin request. The current limiter remains process-local; distributed quotas, encrypted secret management, provider health probes, and full CSRF/session-epoch hardening are deferred operational work.
+The admin workspace exposes overview metrics, users and access, provider/model metadata, usage and estimated provider cost, typed settings, rate-limit values, and an append-only audit feed. Admin responses use `no-store`, and unsafe admin mutations require both an allowed same-origin request and a session-bound CSRF token. Provider endpoints are redacted in responses. The current limiter remains process-local; distributed quotas, encrypted secret management, provider health probes, and DNS-pinned egress remain deferred operational work.
 
 Phone numbers, chat content, provider credentials, and audit events are sensitive. The implementation roadmap includes session hashing, OTP expiry and replay protection, bans, rate limits, secret-safe errors, audit records, retention controls, and provider-key encryption before production deployment.

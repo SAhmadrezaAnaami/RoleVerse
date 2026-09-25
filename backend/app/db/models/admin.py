@@ -90,7 +90,7 @@ class AuditEvent(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "audit_events"
     __table_args__ = (
         CheckConstraint(
-            "action IN ('user.banned', 'user.unbanned', 'user.role_changed', 'provider.created', 'provider.updated', 'model.created', 'model.updated', 'setting.updated', 'rate_limit.updated', 'rate_limit.reset')",
+            "action IN ('user.banned', 'user.unbanned', 'user.sessions_revoked', 'user.role_changed', 'provider.created', 'provider.updated', 'model.created', 'model.updated', 'setting.updated', 'rate_limit.updated', 'rate_limit.reset')",
             name="ck_audit_events_action",
         ),
     )

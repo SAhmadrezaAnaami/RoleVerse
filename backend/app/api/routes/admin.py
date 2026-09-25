@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -10,6 +11,7 @@ from app.api.deps import (
     get_admin_user,
     get_god_admin,
     get_rate_limiter,
+    require_csrf,
     require_same_origin,
 )
 from app.schemas.admin import (
@@ -45,7 +47,7 @@ from app.services import (
 router = APIRouter(
     prefix="/admin",
     tags=["admin"],
-    dependencies=[Depends(require_same_origin)],
+    dependencies=[Depends(require_same_origin), Depends(require_csrf)],
 )
 
 
@@ -64,10 +66,27 @@ def admin_user_data(user) -> AdminUserRead:
     )
 
 
-def provider_data(provider) -> ProviderConnectionRead:
+def redacted_provider_endpoint(value: str) -> str:
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.hostname:
+        return ""
+    port = f":{parsed.port}" if parsed.port else ""
+    return f"{parsed.scheme}://{parsed.hostname}{port}"
+
+
+def provider_data(provider, settings: Settings) -> ProviderConnectionRead:
+    runtime_mode = "live" if (
+        settings.live_provider_enabled
+        and provider.is_default
+        and provider.adapter == "openai-compatible"
+        and provider.base_url == settings.openai_base_url
+    ) else "mock"
     return ProviderConnectionRead.model_validate(provider).model_copy(
         update={
-            "runtime_mode": "mock" if provider.adapter == "mock" else "live",
+            "base_url": redacted_provider_endpoint(provider.base_url),
+            "runtime_mode": runtime_mode,
             "credential_configured": provider.secret_source in {"environment", "secret_manager"},
             "activation_supported": False,
         }
@@ -197,13 +216,26 @@ async def unban_user(
     return admin_user_data(user)
 
 
+@router.post("/users/{user_id}/revoke-sessions", response_model=AdminUserRead)
+async def revoke_user_sessions(
+    user_id: str,
+    admin=Depends(get_admin_user),
+    service: AdminService = Depends(get_admin_service),
+) -> AdminUserRead:
+    try:
+        user = service.revoke_sessions(admin, user_id)
+    except (AdminNotFoundError, AdminConflictError, AdminInputError) as error:
+        raise map_admin_error(error) from error
+    return admin_user_data(user)
+
+
 @router.get("/providers", response_model=list[ProviderConnectionRead])
 async def list_providers(
     admin=Depends(get_admin_user),
     service: AdminService = Depends(get_admin_service),
 ) -> list[ProviderConnectionRead]:
     del admin
-    return [provider_data(provider) for provider in service.list_providers()]
+    return [provider_data(provider, service.settings) for provider in service.list_providers()]
 
 
 @router.post("/providers", response_model=ProviderConnectionRead, status_code=status.HTTP_201_CREATED)
@@ -216,7 +248,7 @@ async def create_provider(
         provider = service.create_provider(admin, payload.model_dump())
     except (AdminConflictError, AdminInputError) as error:
         raise map_admin_error(error) from error
-    return provider_data(provider)
+    return provider_data(provider, service.settings)
 
 
 @router.patch("/providers/{provider_id}", response_model=ProviderConnectionRead)
@@ -234,7 +266,7 @@ async def update_provider(
         )
     except (AdminNotFoundError, AdminConflictError, AdminInputError) as error:
         raise map_admin_error(error) from error
-    return provider_data(provider)
+    return provider_data(provider, service.settings)
 
 
 @router.get("/providers/{provider_id}/models", response_model=list[ProviderModelRead])
@@ -255,7 +287,7 @@ async def list_models(
 async def create_model(
     provider_id: str,
     payload: ProviderModelCreateRequest,
-    admin=Depends(get_admin_user),
+    admin=Depends(get_god_admin),
     service: AdminService = Depends(get_admin_service),
 ) -> ProviderModelRead:
     try:
@@ -270,7 +302,7 @@ async def update_model(
     provider_id: str,
     model_id: str,
     payload: ProviderModelUpdateRequest,
-    admin=Depends(get_admin_user),
+    admin=Depends(get_god_admin),
     service: AdminService = Depends(get_admin_service),
 ) -> ProviderModelRead:
     try:

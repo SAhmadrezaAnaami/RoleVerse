@@ -101,6 +101,7 @@ def test_conversation_routes_require_authentication(application) -> None:
         assert client.get("/api/v1/conversations").status_code == 401
         assert client.post(
             "/api/v1/conversations",
+            headers={"Origin": "https://testserver"},
             json={"character_slug": "luna-vale"},
         ).status_code == 401
 
