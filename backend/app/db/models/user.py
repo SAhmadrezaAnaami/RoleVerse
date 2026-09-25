@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, UniqueConstraint
+from sqlalchemy import DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -14,6 +14,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     display_name: Mapped[str] = mapped_column(String(80), default="", nullable=False)
     role: Mapped[str] = mapped_column(String(16), default="user", index=True, nullable=False)
     status: Mapped[str] = mapped_column(String(16), default="active", index=True, nullable=False)
+    auth_epoch: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     preferred_language: Mapped[str] = mapped_column(String(8), default="en", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     banned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
