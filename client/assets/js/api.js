@@ -1,12 +1,23 @@
 window.RoleVerseApi = {
+  csrfToken() {
+    const prefix = 'roleverse_csrf=';
+    const value = document.cookie.split(';').map((item) => item.trim()).find((item) => item.startsWith(prefix));
+    return value ? decodeURIComponent(value.slice(prefix.length)) : '';
+  },
   async request(path, options = {}) {
+    const method = String(options.method || 'GET').toUpperCase();
+    const unsafe = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const token = this.csrfToken();
     try {
       const response = await fetch(path, {
         ...options,
         credentials: 'include',
+        cache: 'no-store',
+        redirect: 'error',
         headers: {
           Accept: 'application/json',
           ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(unsafe && token ? { 'X-CSRF-Token': token } : {}),
           ...(options.headers || {}),
         },
       });
@@ -35,6 +46,13 @@ window.RoleVerseApi = {
     let buffer = '';
     let eventName = 'message';
     let dataLines = [];
+    let eventCount = 0;
+    let totalBytes = 0;
+    let expectedSequence = 1;
+    const maxBufferBytes = 256 * 1024;
+    const maxEventBytes = 128 * 1024;
+    const maxStreamBytes = 2 * 1024 * 1024;
+    const maxEvents = 10000;
     const dispatch = async () => {
       if (dataLines.length === 0) {
         eventName = 'message';
@@ -42,6 +60,13 @@ window.RoleVerseApi = {
       }
       const rawData = dataLines.join('\n');
       dataLines = [];
+      if (rawData.length > maxEventBytes) {
+        throw new Error('The server returned an oversized stream event.');
+      }
+      eventCount += 1;
+      if (eventCount > maxEvents) {
+        throw new Error('The server returned too many stream events.');
+      }
       if (rawData === '[DONE]') {
         eventName = 'message';
         return;
@@ -52,10 +77,19 @@ window.RoleVerseApi = {
       } catch (error) {
         throw new Error('The server returned an invalid stream event.');
       }
+      if (data && data.sequence !== undefined) {
+        if (!Number.isInteger(data.sequence) || data.sequence !== expectedSequence) {
+          throw new Error('The server returned an invalid stream sequence.');
+        }
+        expectedSequence += 1;
+      }
       await onEvent(eventName, data);
       eventName = 'message';
     };
     const consume = async (final = false) => {
+      if (buffer.length > maxBufferBytes) {
+        throw new Error('The server returned an oversized stream buffer.');
+      }
       let boundary = buffer.match(/\r?\n\r?\n/);
       while (boundary) {
         const frame = buffer.slice(0, boundary.index);
@@ -88,6 +122,12 @@ window.RoleVerseApi = {
     try {
       while (true) {
         const { value, done } = await reader.read();
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > maxStreamBytes) {
+            throw new Error('The server returned an oversized stream.');
+          }
+        }
         if (done) {
           buffer += decoder.decode();
           await consume(true);
@@ -96,6 +136,13 @@ window.RoleVerseApi = {
         buffer += decoder.decode(value, { stream: true });
         await consume();
       }
+    } catch (error) {
+      try {
+        await reader.cancel();
+      } catch (cancelError) {
+        void cancelError;
+      }
+      throw error;
     } finally {
       reader.releaseLock();
     }
@@ -147,7 +194,7 @@ window.RoleVerseApi = {
     });
   },
   async generateMessage(conversationId, messageId) {
-    return this.request(`/api/v1/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/response`);
+    return this.request(`/api/v1/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/response`, { method: 'POST' });
   },
   async getGenerationStatus(conversationId, runId) {
     return this.request(`/api/v1/conversations/${encodeURIComponent(conversationId)}/generations/${encodeURIComponent(runId)}`);
@@ -164,7 +211,12 @@ window.RoleVerseApi = {
         {
           method: 'POST',
           credentials: 'include',
-          headers: { Accept: 'text/event-stream' },
+          cache: 'no-store',
+          redirect: 'error',
+          headers: {
+            Accept: 'text/event-stream',
+            ...(this.csrfToken() ? { 'X-CSRF-Token': this.csrfToken() } : {}),
+          },
           signal,
         },
       );
