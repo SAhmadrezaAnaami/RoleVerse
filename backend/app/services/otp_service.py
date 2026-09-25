@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import secrets
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -40,7 +40,8 @@ class AccountBlockedError(OtpServiceError):
 @dataclass
 class IssuedSession:
     user: User
-    token: str
+    token: str = field(repr=False)
+    csrf_token: str = field(repr=False)
     expires_at: datetime
 
 
@@ -167,11 +168,14 @@ class OtpService:
             raise AccountBlockedError("This account is not available.")
         self.user_repository.touch_login(self.session, user, now)
         token = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_urlsafe(32)
         expires_at = now + timedelta(minutes=self.settings.session_ttl_minutes)
         auth_session = self.auth_repository.create_session(
             self.session,
             user.id,
             hash_secret(token, self.settings.auth_pepper),
+            hash_secret(csrf_token, self.settings.auth_pepper),
+            user.auth_epoch,
             expires_at,
             now,
             user_agent[:255] if user_agent else None,
@@ -179,7 +183,12 @@ class OtpService:
         auth_session.created_at = now
         auth_session.updated_at = now
         self.session.commit()
-        return IssuedSession(user=user, token=token, expires_at=expires_at)
+        return IssuedSession(
+            user=user,
+            token=token,
+            csrf_token=csrf_token,
+            expires_at=expires_at,
+        )
 
     def user_from_token(self, token: str) -> User | None:
         if not token:
@@ -201,6 +210,21 @@ class OtpService:
         self.session.commit()
         return user
 
+    def csrf_is_valid(self, session_token: str, csrf_token: str) -> bool:
+        if not session_token or not csrf_token:
+            return False
+        auth_session = self.auth_repository.active_session(
+            self.session,
+            hash_secret(session_token, self.settings.auth_pepper),
+            self.clock(),
+        )
+        if auth_session is None or auth_session.csrf_token_hash is None:
+            return False
+        return secrets.compare_digest(
+            auth_session.csrf_token_hash,
+            hash_secret(csrf_token, self.settings.auth_pepper),
+        )
+
     def logout(self, token: str) -> None:
         if not token:
             return
@@ -215,7 +239,7 @@ class OtpService:
             self.session.commit()
 
     def logout_all(self, user_id: str) -> None:
-        self.auth_repository.revoke_user_sessions(
+        self.auth_repository.invalidate_user_sessions(
             self.session,
             user_id,
             self.clock(),
